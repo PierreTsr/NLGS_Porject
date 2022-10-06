@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cd "${0%/*}/../" || exit 1
+cd "${0%/*}/../../" || exit 1
 
 if [[ ! -e "data/cmu_dict" ]] ; then
 	mkdir "data/cmu_dict"

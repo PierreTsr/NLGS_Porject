@@ -3,7 +3,7 @@
     Created by pierre
     10/5/22 - 6:32 PM
     Description:
-    # Enter file description
+    Set of tools to load and manipulate the CMU dictionary of pronunciation.
  """
 import re
 from typing import Optional
@@ -56,6 +56,8 @@ class CMUDictionary:
                     continue
                 except IndexError:
                     break
+                if len(line) < 2:
+                    continue
                 p = []
                 s = []
                 for pho in line[1:]:
@@ -138,5 +140,8 @@ def get_rhyming_part(phonemes: list[int], stress: list[Optional[int]]) -> tuple[
     :return: tuple with the last stress value, and the phonemes forming the rhyme.
     :rtype: tuple[int, list[int]]
     """
-    begin = max(idx for idx, s in enumerate(stress) if s is not None)
+    try:
+        begin = max(idx for idx, s in enumerate(stress) if s is not None)
+    except ValueError:
+        begin = 0
     return stress[begin], phonemes[begin:]
