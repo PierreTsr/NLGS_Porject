@@ -6,9 +6,9 @@
     Set of tools to load and manipulate the CMU dictionary of pronunciation.
  """
 import re
-from typing import Optional
+import warnings
 
-CMU_type = dict[str, list[tuple[list[int], list[Optional[int]]]]]
+CMU_type = dict[str, list[tuple[list[int], list[int]]]]
 
 phoneme_pattern = re.compile(r"^([A-Z]+)([0-2]*)$")
 multi_word_pattern = re.compile(r"^(.+)\((\d)\)$")
@@ -22,7 +22,7 @@ class CMUDictionary:
     phonemes_dict = {pho: idx for idx, pho in enumerate(phonemes)}
     stress = [0, 1, 2]
 
-    def __init__(self, path: str = "../data/cmu_dict/cmudict-0.7b") -> None:
+    def __init__(self, path: str = "data/cmu_dict/cmudict-0.7b") -> None:
         """
         Create a tool to manipulate the CMU dictionary of pronunciation.
 
@@ -53,11 +53,10 @@ class CMUDictionary:
                     line = line.split()
                     word = line[0].lower()
                 except UnicodeError:
+                    warnings.warn("Detected a corrupted entry, please check file encoding.", UnicodeWarning)
                     continue
                 except IndexError:
                     break
-                if len(line) < 2:
-                    continue
                 p = []
                 s = []
                 for pho in line[1:]:
@@ -116,32 +115,32 @@ class CMUDictionary:
         pass
 
 
-def split_phoneme(phoneme: str) -> tuple[str, Optional[int]]:
+def split_phoneme(phoneme: str) -> tuple[str, int]:
     """
     Separate the phoneme from the stress information in ARPAbet notation.
 
     :param phoneme: Phoneme as found in the CMU dictionary.
     :type phoneme: str
     :return: Tuple with the phoneme in first position, and the stress information in second.
-    :rtype: tuple[str, Optional[int]]
+    :rtype: tuple[str, int]
     """
     a, b = phoneme_pattern.match(phoneme).groups()
-    return a, int(b) if b else None
+    return a, int(b) if b else -1
 
 
-def get_rhyming_part(phonemes: list[int], stress: list[Optional[int]]) -> tuple[int, list[int]]:
+def get_rhyming_part(phonemes: list[int], stress: list[int]) -> tuple[int, list[int]]:
     """
     Extract the rhyming part from pronunciation pattern.
 
     :param phonemes: list of phonemes without stress information.
     :type phonemes: list[str]
     :param stress: list of stress information for each phoneme.
-    :type stress: list[Optional[int]]
+    :type stress: list[int]
     :return: tuple with the last stress value, and the phonemes forming the rhyme.
     :rtype: tuple[int, list[int]]
     """
     try:
-        begin = max(idx for idx, s in enumerate(stress) if s is not None)
+        begin = max(idx for idx, s in enumerate(stress) if s != -1)
     except ValueError:
         begin = 0
     return stress[begin], phonemes[begin:]
