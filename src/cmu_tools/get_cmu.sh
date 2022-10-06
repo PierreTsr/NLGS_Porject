@@ -10,3 +10,4 @@ cd "data/cmu_dict" || exit 1
 
 wget -O "LICENSE" "https://raw.githubusercontent.com/Alexir/CMUdict/master/LICENSE"
 wget -O "cmudict-0.7b" "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
+sed -i '35733d' "cmudict-0.7b"
