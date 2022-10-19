@@ -23,7 +23,7 @@ def build_corpus(path: Path = Path("data/gutenberg_poetry/gutenberg_poetry_corpu
             corpus[gid] = []
         corpus[gid].append(line)
     corpus = {gid: "\n".join(lines) for gid, lines in corpus.items()}
-    corpus = pd.DataFrame.from_dict(corpus, orient="index", columns=["Text"])
+    corpus = pd.DataFrame.from_dict(corpus, orient="index", columns=["text"])
     return corpus
 
 
