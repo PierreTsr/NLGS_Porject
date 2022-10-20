@@ -17,10 +17,9 @@ multi_word_pattern = re.compile(r"^(.+)\((\d)\)$")
 class CMUDictionary:
     phonemes = ["AA", "AE", "AH", "AO", "AW", "AY", "B", "CH", "D", "DH", "EH", "ER", "EY", "F", "G", "HH", "IH", "IY",
                 "JH", "K", "L", "M", "N", "NG", "OW", "OY", "P", "R", "S", "SH", "T", "TH", "UH", "UW", "V", "W", "Y",
-                "Z",
-                "ZH"]
+                "Z", "ZH"]
     phonemes_dict = {pho: idx for idx, pho in enumerate(phonemes)}
-    stress = [0, 1, 2]
+    stress = [-1, 0, 1, 2]
 
     def __init__(self, path: str = "data/cmu_dict/cmudict-0.7b") -> None:
         """
@@ -62,7 +61,7 @@ class CMUDictionary:
                 for pho in line[1:]:
                     a, b = split_phoneme(pho)
                     p.append(self.phonemes_dict[a])
-                    s.append(b)
+                    s.append(b + 1)
                 if multi_word_pattern.match(word):
                     word = multi_word_pattern.match(word).groups()[0]
                     self.cmu_dictionary[word].append((p, s))
