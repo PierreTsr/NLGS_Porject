@@ -14,6 +14,8 @@ from src.cmu_tools.cmu_dictionary import CMUDictionary
 
 
 class CMULinker:
+    punctuation = [",", ".", ";", ":", "-", "Ċ", "<UNK>"]
+
     def __init__(self, tokenizer: PreTrainedTokenizer, cmu_dict: CMUDictionary):
         self.cmu_vocab: set[str] = set(cmu_dict.cmu_dictionary.keys())
         self.cmu_dictionary = cmu_dict
@@ -21,7 +23,6 @@ class CMULinker:
         self.pronunciation_mapping: list[Optional[str]] = [None] * len(self.gpt_vocab)  # Token to CMU
         self.token_mapping: dict[str, int] = {}  # CMU to token
         self.build_mappings()
-        self.newline_id = self.gpt_vocab["Ċ"]
 
     def build_mappings(self) -> None:
         for word, token_id in self.gpt_vocab.items():
@@ -48,32 +49,3 @@ class CMULinker:
 
     def get_pronunciation(self, token_id: int) -> tuple[list[int], list[int]]:
         return self.cmu_dictionary.cmu_dictionary[self.pronunciation_mapping[token_id]][0]
-
-    def convert_ids(self, token_ids: torch.Tensor, attention_mask: torch.Tensor, max_length=32):
-        phonemes = []
-        stress = []
-        attention = []
-        for token_id, mask in zip(torch.flatten(token_ids), torch.flatten(attention_mask)):
-            if not mask:
-                phonemes.append([-1] * max_length)
-                stress.append([-1] * max_length)
-                attention.append([0] * max_length)
-                continue
-            try:
-                pho, s = self.get_pronunciation(token_id)
-            except KeyError:
-                pho = s = []
-            phonemes.append(pho + [-1] * (max_length - len(pho)) if len(pho) <= max_length else pho[:max_length])
-            stress.append(s + [-1] * (max_length - len(s)) if len(s) <= max_length else s[:max_length])
-            attention.append([1] * min(len(pho), max_length) + [0] * (max_length - min(len(pho), max_length)))
-
-        phonemes = torch.reshape(
-            torch.tensor(phonemes, device=token_ids.device, dtype=token_ids.dtype),
-            (*token_ids.shape, max_length))
-        stress = torch.reshape(
-            torch.tensor(stress, device=token_ids.device, dtype=token_ids.dtype),
-            (*token_ids.shape, max_length))
-        attention = torch.reshape(
-            torch.tensor(attention, device=token_ids.device, dtype=token_ids.dtype),
-            (*token_ids.shape, max_length))
-        return phonemes, stress, attention
