@@ -5,4 +5,4 @@
     Description:
     # Enter file description
  """
-from src.poetry_datasets.poetry_dataset import build_dataset
+from src.poetry_datasets.poetry_dataset import build_dataset, load_dataset
