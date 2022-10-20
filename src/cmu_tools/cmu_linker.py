@@ -46,6 +46,9 @@ class CMULinker:
                 res.append(word)
         return res
 
+    def get_pronunciation(self, token_id: int) -> tuple[list[int], list[int]]:
+        return self.cmu_dictionary.cmu_dictionary[self.pronunciation_mapping[token_id]][0]
+
     def convert_ids(self, token_ids: torch.Tensor, attention_mask: torch.Tensor, max_length=32):
         phonemes = []
         stress = []
@@ -57,7 +60,7 @@ class CMULinker:
                 attention.append([0] * max_length)
                 continue
             try:
-                pho, s = self.cmu_dictionary.cmu_dictionary[self.pronunciation_mapping[token_id]][0]
+                pho, s = self.get_pronunciation(token_id)
             except KeyError:
                 pho = s = []
             phonemes.append(pho + [-1] * (max_length - len(pho)) if len(pho) <= max_length else pho[:max_length])
