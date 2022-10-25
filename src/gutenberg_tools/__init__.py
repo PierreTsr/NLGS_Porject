@@ -5,4 +5,4 @@
     Description:
     # Enter file description
  """
-from src.gutenberg_tools.gutenberg_poetry_corpus import load_gutenberg
+from src.gutenberg_tools.gutenberg_poetry_corpus import load_gutenberg, split_gutenberg

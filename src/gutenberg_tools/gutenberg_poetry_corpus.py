@@ -7,9 +7,10 @@
  """
 import json
 from pathlib import Path
-from tqdm import tqdm
+from random import shuffle
 
 import pandas as pd
+from tqdm import tqdm
 
 
 def build_corpus(path: Path = Path("data/gutenberg_poetry/gutenberg_poetry_corpus")) -> dict[int, list[str]]:
@@ -30,15 +31,15 @@ def build_corpus(path: Path = Path("data/gutenberg_poetry/gutenberg_poetry_corpu
 def add_metadata(corpus: pd.DataFrame,
                  path: Path = Path("data/gutenberg_poetry/gutenberg_metadata.json")) -> pd.DataFrame:
     metadata = pd.read_json(path)
-    corpus = pd.merge(corpus, metadata, how="left", left_index=True, right_on="gd-num-padded").reset_index(drop=True)
+    corpus = pd.merge(corpus, metadata, how="left", left_on="gid", right_on="gd-num-padded").reset_index(drop=True)
     return corpus
 
 
-def split(corpus: dict[int, list[str]], n_lines: int = 32, stride: int=16) -> pd.DataFrame:
+def split(corpus: dict[int, list[str]], n_lines: int = 32, stride: int = 16) -> pd.DataFrame:
     rows = []
     for gid, lines in corpus.items():
-        for i in range(0,len(lines), stride):
-            end = min(i+n_lines, len(lines))
+        for i in range(0, len(lines), stride):
+            end = min(i + n_lines, len(lines))
             rows.append({
                 "gid": gid,
                 "line": i,
@@ -58,3 +59,31 @@ def load_gutenberg(path: Path = Path("data/gutenberg_poetry"), **kwargs):
         corpus["line"] = 0
     corpus = add_metadata(corpus, path / "gutenberg_metadata.json")
     return corpus
+
+
+def split_gutenberg(
+        data: pd.DataFrame,
+        groups: str,
+        ratios: tuple[int, int, int] = (0.9, .05, .05),
+) -> dict[str, pd.DataFrame]:
+    assert abs(sum(ratios) - 1) < 1e-5
+    train = []
+    test = []
+    validation = []
+    n = len(data)
+    group_ids = list(set(data[groups]))
+    shuffle(group_ids)
+    while len(train) < ratios[0] * n:
+        gid = group_ids.pop()
+        train += list(data.loc[data[groups] == gid].index)
+    while len(test) + len(train) < (ratios[0] + ratios[1]) * n:
+        gid = group_ids.pop()
+        test += list(data.loc[data[groups] == gid].index)
+    while group_ids:
+        gid = group_ids.pop()
+        validation += list(data.loc[data[groups] == gid].index)
+    return {
+        "train": data.loc[train, :].copy(),
+        "test": data.loc[test, :].copy(),
+        "validation": data.loc[validation, :].copy()
+    }
