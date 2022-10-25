@@ -10,15 +10,17 @@ from argparse import ArgumentParser
 from transformers import AutoTokenizer
 
 from src.cmu_tools import CMUDictionary, CMULinker
-from src.gutenberg_tools import load_gutenberg
+from src.gutenberg_tools import load_gutenberg, split_gutenberg
 from src.poetry_datasets import build_dataset
 from src.pronunciation_embeddings import PronunciationTokenizer
 
 
 def main(args):
     corpus = load_gutenberg(n_lines=args.n_lines, stride=args.stride)
+    corpus_dict = split_gutenberg(corpus, "gid")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.model_max_length = args.sequence_length
 
     if args.pronunciation:
         cmu = CMUDictionary()
@@ -29,7 +31,7 @@ def main(args):
             args.n_lines, args.stride, args.max_length)
 
         dataset = build_dataset(
-            corpus,
+            corpus_dict,
             tokenizer,
             tokenizer_p=tokenizer_p,
             max_length=args.max_length,
@@ -42,7 +44,7 @@ def main(args):
         data_path = "data/datasets/gutenberg_chunked_{}_{}_{}".format(args.n_lines, args.stride, args.max_length)
 
         dataset = build_dataset(
-            corpus,
+            corpus_dict,
             tokenizer,
             batch_size=args.batch_size,
             num_proc=args.workers,
@@ -62,6 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--stride", default=92, type=int, help="Stride when splitting the corpus in chunks.")
     parser.add_argument("-m", "--max_length", default=8, type=int, help="Truncation length of the pronunciation "
                                                                         "representations.")
+    parser.add_argument("-l", "--sequence_length", default=2048, type=int, help="Truncation length of the sentences.")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size for the dataset processing.")
     parser.add_argument("--workers", default=1, type=int, help="Number of workers for the dataset processing.")
     args = parser.parse_args()
