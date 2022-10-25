@@ -9,14 +9,14 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-from datasets import Dataset, Features, Sequence, Array2D, Value
+from datasets import Dataset, DatasetDict, Features, Sequence, Array2D, Value
 from pandas import DataFrame
 from transformers import PreTrainedTokenizer
 
 from src.pronunciation_embeddings import PronunciationTokenizer
 
 type_mappings = {
-    "input_ids": torch.int32,
+    "input_ids": torch.long,
     "attention_mask": torch.bool,
     "pronunciation": torch.uint8,
     "stress": torch.uint8,
@@ -47,19 +47,21 @@ def get_pronunciation_tokenizing_fn(tokenizer: PreTrainedTokenizer, tokenizer_p:
 
 
 def custom_getter(chunk):
-    return {
-        key: torch.tensor(data, dtype=type_mappings[key]) if key in type_mappings.keys() else data
-        for key, data in chunk.items()
-    }
+    data = {}
+    for key, val in chunk.items():
+        if key in type_mappings.keys():
+            data[key] = torch.tensor(val, dtype=type_mappings[key])
+    data["labels"] = data["input_ids"]
+    return data
 
 
 def load_dataset(path: Path | str):
-    dataset = Dataset.load_from_disk(str(path))
+    dataset = DatasetDict.load_from_disk(str(path))
     dataset.set_transform(custom_getter)
     return dataset
 
 
-def build_dataset(corpus: DataFrame,
+def build_dataset(corpus: DataFrame | dict[str, DataFrame],
                   tokenizer: PreTrainedTokenizer,
                   tokenizer_p: Optional[PronunciationTokenizer] = None,
                   max_length=8,
@@ -67,7 +69,6 @@ def build_dataset(corpus: DataFrame,
                   batch_size=1000,
                   num_proc=1,
                   **kwargs):
-    dataset = Dataset.from_pandas(corpus[["text"]])
     if tokenizer_p is not None:
         features = Features({
             "text": Value("string"),
@@ -85,6 +86,12 @@ def build_dataset(corpus: DataFrame,
             "attention_mask": Sequence(Value("uint8")),
         })
         tokenizing_fn = get_tokenizing_fn(tokenizer, **kwargs)
+    if type(corpus) == dict:
+        dataset = DatasetDict({
+            key: Dataset.from_pandas(df[["text"]], preserve_index=False) for key, df in corpus.items()
+        })
+    else:
+        dataset = Dataset.from_pandas(corpus[["text"]], preserve_index=False)
     print("Tokenizing dataset in PyTorch format:")
     dataset = dataset.map(tokenizing_fn, batched=batched, batch_size=batch_size, num_proc=num_proc, features=features)
     return dataset
