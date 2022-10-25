@@ -33,11 +33,11 @@ def compute_metrics(eval_pred):
 
 def main(argv=None):
     dataset = load_dataset(
-        "../data/datasets/gutenberg_pronunciation_chunked_128_96_8")
+        "data/datasets/gutenberg_pronunciation_chunked_128_96_8")
     embeddings_p = torch.load(
-        "../etc/pronunciation_embeddings/p_32_8_s_32_8_sg_1_negative_5/pronunciation_embeddings.pt")
+        "etc/pronunciation_embeddings/p_32_8_s_32_8_sg_1_negative_5/pronunciation_embeddings.pt")
     embeddings_s = torch.load(
-        "../etc/pronunciation_embeddings/p_32_8_s_32_8_sg_1_negative_5/stress_embeddings.pt")
+        "etc/pronunciation_embeddings/p_32_8_s_32_8_sg_1_negative_5/stress_embeddings.pt")
 
     gpt = AutoModelForCausalLM.from_pretrained(model_name)
     model = PronunciationGPT(gpt, embeddings_p, embeddings_s)
