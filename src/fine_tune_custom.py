@@ -121,9 +121,8 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
-        checkpoint = get_checkpoint(training_args)
         model.freeze_gpt()
-        trainer.train(resume_from_checkpoint=checkpoint)
+        trainer.train()
 
         training_args.num_train_epochs = model_args.num_training_epochs_full
         training_args.overwrite_output_dir = False
@@ -136,9 +135,8 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
-        checkpoint = get_checkpoint(training_args)
         model.unfreeze_gpt()
-        trainer.train(resume_from_checkpoint=checkpoint)
+        trainer.train(resume_from_checkpoint=get_last_checkpoint(training_args.output_dir))
 
 
 if __name__ == "__main__":
