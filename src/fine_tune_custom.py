@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from datasets import Dataset
 from evaluate import load
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
 from transformers.trainer_utils import get_last_checkpoint
@@ -98,12 +99,17 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
 
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
-        predictions = np.argmax(predictions, axis=-1)
         predictions_txt = tokenizer.batch_decode(predictions)
         references = tokenizer.batch_decode(labels)
         results_acc = accuracy.compute(predictions=predictions.flatten(), references=labels.flatten())
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
-        return {**results_acc, **results_bleu}
+        res = {**results_acc, **results_bleu}
+        print(res)
+        return res
+
+    def preprocess_logits_for_metrics(logits, labels):
+        logits = torch.argmax(logits, -1)
+        return logits
 
     if training_args.do_train:
         training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
@@ -113,6 +119,7 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             train_dataset=dataset["train"],
             eval_dataset=dataset["test"],
             compute_metrics=compute_metrics,
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
         checkpoint = get_checkpoint(training_args)
         model.freeze_gpt()
@@ -127,6 +134,7 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             train_dataset=dataset["train"],
             eval_dataset=dataset["test"],
             compute_metrics=compute_metrics,
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
         checkpoint = get_checkpoint(training_args)
         model.unfreeze_gpt()
