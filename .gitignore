@@ -209,3 +209,6 @@ fabric.properties
 # Datasets
 data/*
 !data/.gitkeep
+
+# Logging
+etc/logging
