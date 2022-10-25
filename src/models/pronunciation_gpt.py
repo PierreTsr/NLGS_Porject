@@ -38,6 +38,10 @@ class PronunciationGPT(GPTNeoForCausalLM):
         for param in self.gpt.parameters():
             param.requires_grad = False
 
+    def unfreeze_gpt(self):
+        for param in self.gpt.parameters():
+            param.requires_grad = True
+
     def forward(
             self,
             input_ids: Optional[torch.Tensor] = None,
