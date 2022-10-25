@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 import torch
-from datasets import Dataset, DatasetDict, Features, Sequence, Array2D, Value
+from datasets import Dataset, DatasetDict, Features, Sequence, Array2D, Value, load_from_disk
 from pandas import DataFrame
 from transformers import PreTrainedTokenizer
 
@@ -56,7 +56,7 @@ def custom_getter(chunk):
 
 
 def load_dataset(path: Path | str):
-    dataset = DatasetDict.load_from_disk(str(path))
+    dataset = load_from_disk(str(path))
     dataset.set_transform(custom_getter)
     return dataset
 
