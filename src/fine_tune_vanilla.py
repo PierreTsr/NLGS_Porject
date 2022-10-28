@@ -13,7 +13,8 @@ import torch
 from evaluate import load
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
 
-from src import load_dataset
+from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
+from metrics import AlliterationMetrics,RhymingMetrics
 
 accuracy = load("accuracy")
 perplexity = load("perplexity")
@@ -45,20 +46,20 @@ class DataTrainingArguments:
             "help": "Path to the dataset dictionary for training, testing and evaluation."
         }
     )
-    embeddings_path: str = field(
-        metadata={
-            "help": "Path to the pretrained pronunciation embeddings."
-        }
-    )
 
 
 def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, data_args: DataTrainingArguments):
     dataset = load_dataset(data_args.dataset_path)
-    embeddings_p = torch.load(Path(data_args.embeddings_path) / "pronunciation_embeddings.pt")
-    embeddings_s = torch.load(Path(data_args.embeddings_path) / "stress_embeddings.pt")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
+    tokenizer.pad_token = tokenizer.eos_token
+    cmu = CMUDictionary()
+    linker = CMULinker(tokenizer, cmu)
+    tokenizer_p = PronunciationTokenizer(linker, tokenizer)
+
+    alliterations = AlliterationMetrics(linker, tokenizer_p)
+    rhymes = RhymingMetrics(linker, tokenizer_p)
 
     device = torch.device("cpu")
     if torch.cuda.is_available() and not training_args.no_cuda:
@@ -72,7 +73,14 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         references = tokenizer.batch_decode(labels)
         results_acc = accuracy.compute(predictions=predictions.flatten(), references=labels.flatten())
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
-        res = {**results_acc, **results_bleu}
+        results_alli = alliterations.compute(predictions)
+        results_rhymes = rhymes.compute(predictions)
+        res = {
+            **results_acc,
+            **results_bleu,
+            **results_alli,
+            **results_rhymes,
+        }
         print(res)
         return res
 
