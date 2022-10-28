@@ -43,7 +43,7 @@ def split(corpus: dict[int, list[str]], n_lines: int = 32, stride: int = 16) -> 
             rows.append({
                 "gid": gid,
                 "line": i,
-                "text": "\n".join(lines[i:end])
+                "text": "\n".join(lines[i:end]) + "\n"
             })
     return pd.DataFrame.from_dict(rows)
 
@@ -53,7 +53,7 @@ def load_gutenberg(path: Path = Path("data/gutenberg_poetry"), **kwargs):
     if "n_lines" in kwargs.keys() and "stride" in kwargs.keys():
         corpus = split(corpus, kwargs["n_lines"], kwargs["stride"])
     else:
-        corpus = {gid: "\n".join(lines) for gid, lines in corpus.items()}
+        corpus = {gid: "\n".join(lines) + "\n" for gid, lines in corpus.items()}
         corpus = pd.DataFrame.from_dict(corpus, orient="index", columns=["text"])
         corpus = corpus.reset_index(names=["gid"])
         corpus["line"] = 0
