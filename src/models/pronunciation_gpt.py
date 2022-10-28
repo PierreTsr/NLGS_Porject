@@ -9,7 +9,8 @@ from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
-from transformers import GPTNeoForCausalLM
+from transformers import GPTNeoForCausalLM, TrainingArguments, TrainerState, TrainerControl, \
+    DefaultFlowCallback
 
 from . import PronunciationAttention
 
@@ -26,7 +27,14 @@ class PronunciationGPT(GPTNeoForCausalLM):
             self.gpt.get_input_embeddings().embedding_dim,
             **kwargs
         )
-        self.y = torch.nn.Parameter(torch.tensor(1e-2), requires_grad=True)
+        self.y = torch.nn.Parameter(torch.tensor(1e-2), requires_grad=False)
+        self.switch_pronunciation = True
+
+    def enable_pronunciation(self):
+        self.switch_pronunciation = True
+
+    def disable_pronunciation(self):
+        self.switch_pronunciation = False
 
     def resize_position_embeddings(self, new_num_position_embeddings: int):
         self.gpt.resize_position_embeddings(new_num_position_embeddings)
@@ -65,13 +73,16 @@ class PronunciationGPT(GPTNeoForCausalLM):
 
         if pronunciation is None or stress is None or pronunciation_attention_mask is None:
             raise ValueError("PronunciationGPT needs pronunciation, stress and pronunciation_attention_mask inputs.")
-        pronunciation_embeddings = self.pronunciation(
-            pronunciation,
-            stress,
-            pronunciation_attention_mask
-        )
 
-        inputs_embeds = base_embeddings + self.y * pronunciation_embeddings
+        if self.switch_pronunciation:
+            pronunciation_embeddings = self.pronunciation(
+                pronunciation,
+                stress,
+                pronunciation_attention_mask
+            )
+            inputs_embeds = base_embeddings + self.y * pronunciation_embeddings
+        else:
+            inputs_embeds = base_embeddings
 
         outputs = self.gpt(
             past_key_values=past_key_values,
@@ -88,3 +99,10 @@ class PronunciationGPT(GPTNeoForCausalLM):
         )
 
         return outputs
+
+
+class MixinValueCallback(DefaultFlowCallback):
+    def on_log(self, args: TrainingArguments, state: TrainerState, control: TrainerControl,
+                    logs: dict[str, float] = None, model: PronunciationGPT = None, **kwargs):
+        y = model.y.data.item()
+        logs["mixin_value"] = y
