@@ -20,6 +20,8 @@ class CMUDictionary:
                 "Z", "ZH"]
     phonemes_dict = {pho: idx for idx, pho in enumerate(phonemes)}
     stress = [-1, 0, 1, 2]
+    vowels = {idx for idx, pho in enumerate(phonemes) if pho[0] in {"A", "E", "I", "O", "U", "Y"}}
+    consonants = {idx for idx, pho in enumerate(phonemes) if pho[0] not in {"A", "E", "I", "O", "U", "Y"}}
 
     def __init__(self, path: str = "data/cmu_dict/cmudict-0.7b") -> None:
         """
@@ -79,8 +81,7 @@ class CMUDictionary:
         assert self.cmu_dictionary
         for word, pronunciations in self.cmu_dictionary.items():
             for (phonemes, stress) in pronunciations:
-                s, p = get_rhyming_part(phonemes, stress)
-                key = (s, *p)
+                key = get_rhyming_part(phonemes, stress)
                 if key not in self.rhyme_dictionary:
                     self.rhyme_dictionary[key] = []
                 self.rhyme_dictionary[key].append(word)
@@ -107,13 +108,6 @@ class CMUDictionary:
         return bool(res)
 
 
-    def get_pronunciation(tokens: list[str]) -> list[int]:
-        pass
-
-    def get_stress(tokens: list[str]) -> list[int]:
-        pass
-
-
 def split_phoneme(phoneme: str) -> tuple[str, int]:
     """
     Separate the phoneme from the stress information in ARPAbet notation.
@@ -127,7 +121,7 @@ def split_phoneme(phoneme: str) -> tuple[str, int]:
     return a, int(b) if b else -1
 
 
-def get_rhyming_part(phonemes: list[int], stress: list[int]) -> tuple[int, list[int]]:
+def get_rhyming_part(phonemes: list[int], stress: list[int]) -> tuple[int, ...]:
     """
     Extract the rhyming part from pronunciation pattern.
 
@@ -136,10 +130,10 @@ def get_rhyming_part(phonemes: list[int], stress: list[int]) -> tuple[int, list[
     :param stress: list of stress information for each phoneme.
     :type stress: list[int]
     :return: tuple with the last stress value, and the phonemes forming the rhyme.
-    :rtype: tuple[int, list[int]]
+    :rtype: tuple[int]
     """
     try:
-        begin = max(idx for idx, s in enumerate(stress) if s != -1)
+        begin = max(idx for idx, s in enumerate(stress) if (s == 1 or s == 2))
     except ValueError:
         begin = 0
-    return stress[begin], phonemes[begin:]
+    return stress[begin], *phonemes[begin:]
