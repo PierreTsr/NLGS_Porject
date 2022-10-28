@@ -5,5 +5,5 @@
     Description:
     # Enter file description
  """
-from src.models.pronunciation_rnn import PronunciationRNN, PronunciationAttention
-from src.models.pronunciation_gpt import PronunciationGPT
+from .pronunciation_rnn import PronunciationRNN, PronunciationAttention
+from .pronunciation_gpt import PronunciationGPT, MixinValueCallback

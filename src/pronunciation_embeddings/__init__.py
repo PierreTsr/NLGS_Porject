@@ -5,5 +5,5 @@
     Description:
     # Enter file description
  """
-from src.pronunciation_embeddings.pronunciation_tokenizer import PronunciationTokenizer
-from src.pronunciation_embeddings.pronunciation_embeddings import train
+from .pronunciation_tokenizer import PronunciationTokenizer
+from .pronunciation_embeddings import train
