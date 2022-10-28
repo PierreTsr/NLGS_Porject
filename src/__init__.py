@@ -5,7 +5,8 @@
     Description:
     Init file
  """
-from src.cmu_tools import *
-from src.gutenberg_tools import *
-from src.poetry_datasets import *
-from src.pronunciation_embeddings import *
+from .cmu_tools import *
+from .gutenberg_tools import *
+from .poetry_datasets import *
+from .pronunciation_embeddings import *
+from .models import *
