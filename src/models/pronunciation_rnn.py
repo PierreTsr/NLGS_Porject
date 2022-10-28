@@ -73,7 +73,7 @@ class PronunciationAttention(nn.Module):
         self.fc1 = nn.Linear(self.dim_src, dim_hidden)
         self.activation = nn.PReLU()
         self.fc2 = nn.Linear(dim_hidden, dim_target)
-        self.bn2 = nn.BatchNorm1d(dim_target)
+        self.bn2 = nn.BatchNorm1d(dim_target, affine=False)
 
     def forward(self,
                 pronunciation: torch.Tensor,
