@@ -16,10 +16,10 @@ from src.cmu_tools import CMULinker
 
 
 class PronunciationTokenizer:
-    punctuation = [",", ".", ";", ":", "-", "Ċ", "<UNK>"]
 
     def __init__(self, linker: CMULinker, tokenizer: PreTrainedTokenizer):
         self.linker = linker
+        self.punctuation = linker.punctuation
 
         self.vocabulary_p = linker.cmu_dictionary.phonemes + self.punctuation
         self.index_p = {p: idx for idx, p in enumerate(self.vocabulary_p)}
@@ -31,8 +31,9 @@ class PronunciationTokenizer:
                                 for t in self.punctuation[:-1]}
         self.unk_token_p = len(self.vocabulary_p) - 1
         self.unk_token_s = len(self.vocabulary_s) - 1
+        self.newline_token = tokenizer.convert_tokens_to_ids("Ċ")
 
-    def convert_sentence(self, input_ids: torch.Tensor, attention_mask: torch.Tensor):
+    def convert_sentence_pt(self, input_ids: torch.Tensor, attention_mask: torch.Tensor):
         pronunciation = []
         stress = []
         for token_id, mask in zip(input_ids, attention_mask):
@@ -53,6 +54,21 @@ class PronunciationTokenizer:
                 stress.append(s)
         return pronunciation, stress
 
+    def convert_sentence(self, input_ids: list[int]):
+        pronunciation = []
+        stress = []
+        for token_id in input_ids:
+            if token_id in self.punctuation_ids.keys():
+                continue
+            try:
+                p, s = self.linker.get_pronunciation(token_id)
+                pronunciation += p
+                stress += s
+            except KeyError:
+                continue
+        return pronunciation, stress
+
+
     def convert_to_phonemes(self, token_ids):
         res = []
         for token_id in token_ids:
@@ -65,16 +81,16 @@ class PronunciationTokenizer:
             res.append(self.vocabulary_s[token_id])
         return res
 
-    def convert_tokens_2d(self, input_ids: torch.Tensor | list, attention_mask: torch.Tensor | list, **kwargs):
+    def convert_tokens_2d_pt(self, input_ids: torch.Tensor | list, attention_mask: torch.Tensor | list, **kwargs):
         if type(input_ids) == torch.Tensor and input_ids.ndim == 1:
-            pronunciation, stress = self.convert_sentence(input_ids, attention_mask)
+            pronunciation, stress = self.convert_sentence_pt(input_ids, attention_mask)
             return {"pronunciation": pronunciation, "stress": stress}
 
         if type(input_ids) == list or input_ids.ndim == 2:
             pronunciation = []
             stress = []
             for token_id, mask in zip(input_ids, attention_mask):
-                p, s = self.convert_sentence(token_id, mask)
+                p, s = self.convert_sentence_pt(token_id, mask)
                 pronunciation.append(p)
                 stress.append(s)
             return {"pronunciation": pronunciation, "stress": stress}
@@ -118,7 +134,7 @@ class PronunciationTokenizer:
 
         target_dir.mkdir(exist_ok=True, parents=True)
         print("Computing the pronunciation and stress representation of the dataset:")
-        dataset = dataset.map(lambda data: self.convert_tokens_2d(**data), batched=False, num_proc=1)
+        dataset = dataset.map(lambda data: self.convert_tokens_2d_pt(**data), batched=False, num_proc=1)
 
         n = len(dataset)
         print("Writing pronunciation data to file:")
