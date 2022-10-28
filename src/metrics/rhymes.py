@@ -5,9 +5,13 @@
     Description:
     # Enter file description
  """
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
+
+from tqdm import tqdm
 
 from .utils import to_nested_list
 from src.cmu_tools import CMULinker, get_rhyming_part
@@ -68,24 +72,32 @@ class RhymingMetrics:
         mask = [(*row[1],) in rhymes for row in rhyme_df[cols].iterrows()]
         rhyme_df.loc[mask, "rhyme"] = True
 
-    def count_rolling_rhymes(self, rhyme_df: pd.DataFrame, window: int = 8) -> float:
+    def count_rolling_rhymes(self, rhyme_df: pd.DataFrame, window: int) -> float:
         n = len(rhyme_df)
         for i in range(n - window + 1):
             self.mark_rhymes(rhyme_df.iloc[i:i + window, :])
         return len(rhyme_df[rhyme_df["rhyme"]])
 
-    def avg_rolling_rhymes(self, generation: list[pd.DataFrame], window: int = 8):
+    def _count_rolling_rhymes(self, args):
+        return self.count_rolling_rhymes(*args)
+
+    def avg_rolling_rhymes(self, generation: list[pd.DataFrame], window: int, workers: Optional[int]):
         r = 0
-        n = 0
-        for df in generation:
-            r += self.count_rolling_rhymes(df, window)
-            n += len(df)
+        n = sum(len(df) for df in generation)
+        if workers is not None:
+            args = [(df, window) for df in generation]
+            with mp.Pool(workers) as pool:
+                r = sum(tqdm(pool.imap_unordered(self._count_rolling_rhymes, args)))
+        else:
+            for df in generation:
+                r += self.count_rolling_rhymes(df, window)
         return r / n
 
-    def compute(self, generations: list[list[int]] | np.ndarray, max_depth: int = 4, window: int = 8):
+    def compute(self, generations: list[list[int]] | np.ndarray, max_depth: int = 4, window: int = 4,
+                workers: Optional[int] = None):
         generations = to_nested_list(generations)
         rhymes_dfs = [self.build_rhyme_df(generation, max_depth) for generation in generations]
         metrics = {
-            "rolling_rhymes": self.avg_rolling_rhymes(rhymes_dfs, window=window),
+            "rolling_rhymes": self.avg_rolling_rhymes(rhymes_dfs, window=window, workers=workers),
         }
         return metrics
