@@ -14,10 +14,11 @@ import torch
 from datasets import Dataset
 from evaluate import load
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
+from transformers.integrations import TensorBoardCallback
 from transformers.trainer_utils import get_last_checkpoint
 
-from src import load_dataset
-from src.models import PronunciationGPT
+from models import PronunciationGPT, MixinValueCallback
+from poetry_datasets import load_dataset
 
 accuracy = load("accuracy")
 perplexity = load("perplexity")
@@ -31,6 +32,11 @@ class ModelArguments:
     """
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
+    )
+    use_fine_tuned: bool = field(
+        default=False,
+        metadata={"help": "Whether or not the provided model has already been fine-tuned on the dataset. If False, then"
+                          " the provided model will be fine tuned first without the pronunciation embeddings."}
     )
     num_training_epochs_pronunciation: float = field(
         default=1.0,
@@ -87,7 +93,7 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     embeddings_p = torch.load(Path(data_args.embeddings_path) / "pronunciation_embeddings.pt")
     embeddings_s = torch.load(Path(data_args.embeddings_path) / "stress_embeddings.pt")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
     gpt = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
     model = PronunciationGPT(gpt, embeddings_p, embeddings_s)
 
@@ -112,31 +118,35 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         return logits
 
     if training_args.do_train:
-        training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
-        trainer = Seq2SeqTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=dataset["train"],
-            eval_dataset=dataset["test"],
-            compute_metrics=compute_metrics,
-            preprocess_logits_for_metrics=preprocess_logits_for_metrics
-        )
-        model.freeze_gpt()
-        trainer.train()
+        if not model_args.use_fine_tuned:
+            model.disable_pronunciation()
+            training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
+            trainer = Seq2SeqTrainer(
+                model=model,
+                args=training_args,
+                train_dataset=dataset["train"],
+                eval_dataset=dataset["test"],
+                compute_metrics=compute_metrics,
+                preprocess_logits_for_metrics=preprocess_logits_for_metrics
+            )
+            trainer.train()
 
+        model.enable_pronunciation()
+        # model.freeze_gpt()
         training_args.num_train_epochs = model_args.num_training_epochs_full
-        training_args.overwrite_output_dir = False
-        training_args.resume_from_checkpoint = None
+        training_args.overwrite_output_dir = model_args.use_fine_tuned
         trainer = Seq2SeqTrainer(
             model=model,
             args=training_args,
             train_dataset=dataset["train"],
             eval_dataset=dataset["test"],
             compute_metrics=compute_metrics,
-            preprocess_logits_for_metrics=preprocess_logits_for_metrics
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics,
+            callbacks=[MixinValueCallback]
         )
-        model.unfreeze_gpt()
-        trainer.train(resume_from_checkpoint=get_last_checkpoint(training_args.output_dir))
+        trainer.pop_callback(TensorBoardCallback)
+        trainer.add_callback(TensorBoardCallback)
+        trainer.train()
 
 
 if __name__ == "__main__":
