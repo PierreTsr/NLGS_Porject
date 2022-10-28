@@ -7,14 +7,13 @@
  """
 from typing import Optional
 
-import torch
 from transformers import PreTrainedTokenizer
 
 from src.cmu_tools.cmu_dictionary import CMUDictionary
 
 
 class CMULinker:
-    punctuation = [",", ".", ";", ":", "-", "Ċ", "<UNK>"]
+    punctuation = [",", ".", ";", ":", "-", "Ċ", "?", "!", "'", "(", ")", "<UNK>"]
 
     def __init__(self, tokenizer: PreTrainedTokenizer, cmu_dict: CMUDictionary):
         self.cmu_vocab: set[str] = set(cmu_dict.cmu_dictionary.keys())
