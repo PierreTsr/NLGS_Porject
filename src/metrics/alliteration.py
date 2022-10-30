@@ -34,10 +34,12 @@ class AlliterationMetrics:
         return consonants
 
     def get_accentuated_consonants(self, generation: list[int]) -> list[list[int]]:
-        newlines = [0] + [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token]
+        newlines = [0] + [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token] + [len(generation)]
         consonants = []
         for i in range(len(newlines) - 1):
             start, stop = newlines[i:i + 2]
+            if stop - start <= 1:
+                continue
             consonants.append(self.get_accentuated_consonants_line(generation[start + 1:stop]))
         return consonants
 
