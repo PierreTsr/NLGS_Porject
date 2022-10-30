@@ -48,3 +48,6 @@ class CMULinker:
 
     def get_pronunciation(self, token_id: int) -> tuple[list[int], list[int]]:
         return self.cmu_dictionary.cmu_dictionary[self.pronunciation_mapping[token_id]][0]
+
+    def get_all_pronunciations(self, token_id: int) -> list[tuple[list[int], list[int]]]:
+        return self.cmu_dictionary.cmu_dictionary[self.pronunciation_mapping[token_id]]
