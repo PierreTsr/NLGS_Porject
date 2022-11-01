@@ -1,0 +1,12 @@
+{
+  "model_name_or_path": "etc/gpt-neo-125M-fine-tuned",
+  "dataset_path": "data/datasets/gutenberg_pronunciation_chunked_1_4_8",
+  "batch_size": 8,
+  "model_inputs": ["input_ids", "attention_mask"],
+  "no_cuda": false,
+  "num_beams": 10,
+  "temperature": 1.0,
+  "no_repeat_ngram_size": 0,
+  "top_p": 1.0,
+  "max_new_tokens": 64
+}
