@@ -6,6 +6,7 @@
     # Enter file description
  """
 import numpy as np
+import torch
 
 
 def to_nested_list(generations) -> list[list[int]]:
@@ -19,6 +20,6 @@ def to_nested_list(generations) -> list[list[int]]:
                              "received {}-dim".format(generations.ndim))
     elif isinstance(generations, list) and not isinstance(generations[0], list):
         generations = [generations]
-    if isinstance(generations[0][0], float):
+    if isinstance(generations[0][0], float) or isinstance(generations[0][0], torch.Tensor):
         generations = [[int(g) for g in generation] for generation in generations]
     return generations
