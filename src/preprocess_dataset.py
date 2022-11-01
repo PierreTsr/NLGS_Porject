@@ -6,19 +6,21 @@
     Script to pre-process and build the Gutenberg Poetry Corpus into a HuggingFace's dataset.
  """
 from argparse import ArgumentParser
-from typing import Optional
+from pathlib import Path
 
 from transformers import AutoTokenizer
 
 from src.cmu_tools import CMUDictionary, CMULinker
-from src.gutenberg_tools import load_gutenberg, split_gutenberg
+from src.gutenberg_tools import load_gutenberg, split_gutenberg_to_json, load_split
 from src.poetry_datasets import build_dataset
 from src.pronunciation_embeddings import PronunciationTokenizer
 
 
 def main(args):
     corpus = load_gutenberg(n_lines=args.n_lines, stride=args.stride)
-    corpus_dict = split_gutenberg(corpus, "gid")
+    if args.new_split:
+        split_gutenberg_to_json(Path("etc/config/gutenberg_split.json"), corpus)
+    corpus_dict = load_split(Path("etc/config/gutenberg_split.json"), corpus)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.model_max_length = args.sequence_length if args.sequence_length is not None else 2048
@@ -69,6 +71,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--max_length", default=8, type=int, help="Truncation length of the pronunciation "
                                                                         "representations.")
     parser.add_argument("-l", "--sequence_length", default=None, type=int, help="Truncation length of the sentences.")
+    parser.add_argument("--new_split", action="store_true", help="Creates a new train/test/val split.")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size for the dataset processing.")
     parser.add_argument("--workers", default=1, type=int, help="Number of workers for the dataset processing.")
     args = parser.parse_args()
