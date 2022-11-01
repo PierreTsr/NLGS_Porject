@@ -18,9 +18,10 @@ from src.pronunciation_embeddings import PronunciationTokenizer
 
 
 class RhymingMetrics:
-    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer):
+    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, verbose: bool = True):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
+        self.verbose = verbose
 
     def get_rhyming_tokens(self, generation: list[int]) -> list[int]:
         newlines = [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token]
@@ -36,58 +37,45 @@ class RhymingMetrics:
                     break
         return rhyming_tokens
 
-    def build_rhyme_df(self, generation: list[int], max_depth=6, pad: int = 0) -> pd.DataFrame:
+    def build_rhyme_list(self, generation: list[int]) -> list[tuple[int, ...]]:
         rhyming_words = self.get_rhyming_tokens(generation)
-        df = {
-            "stress": [],
-            **{i: [] for i in range(max_depth)}
-        }
+        rhymes = []
         for word in rhyming_words:
             try:
                 phonemes, stress = self.linker.get_pronunciation(word)
-                rhyming_part = get_rhyming_part(phonemes, stress)
+                rhyming_part = get_rhyming_part(phonemes, stress)[1:]
             except KeyError:
-                rhyming_part = tuple(pd.NA for _ in range(max_depth + 1))
-            finally:
-                df["stress"].append(rhyming_part[0])
-                for i in range(max_depth):
-                    if i < len(rhyming_part) - 1:
-                        df[i].append(rhyming_part[len(rhyming_part) - i - 1])
-                    else:
-                        df[i].append(-1)
-        for key in df.keys():
-            df[key] += [pd.NA] * pad
-        df = pd.DataFrame.from_dict(df)
-        df["rhyme"] = False
-        return df
+                rhyming_part = tuple()
+            rhymes.append(rhyming_part)
+        return rhymes
 
-    def mark_rhymes(self, rhyme_df: pd.DataFrame):
-        df = rhyme_df.dropna()
-        max_depth = df.shape[1] - 2
-        cols = list(range(max_depth))
-        count = df.groupby(cols, as_index=False).size()
-        rhymes = count[count["size"] > 1]
-        rhymes = {(*row[1],) for row in rhymes[cols].iterrows()}
-        mask = [(*row[1],) in rhymes for row in rhyme_df[cols].iterrows()]
-        rhyme_df.loc[mask, "rhyme"] = True
+    def mark_perfect_rhymes(self, rhymes: list[tuple[int, ...]], rhyming: list[bool], begin: int, end: int):
+        for i in range(begin, end):
+            for j in range(begin, end):
+                if i == j or (rhyming[i] and rhyming[j]):
+                    continue
+                b = rhymes[i] == rhymes[j]
+                rhyming[i] |= b
+                rhyming[j] |= b
 
-    def count_rolling_rhymes(self, rhyme_df: pd.DataFrame, window: int) -> float:
-        n = len(rhyme_df)
+    def count_rolling_rhymes(self, rhymes: list[tuple[int, ...]], window: int) -> float:
+        n = len(rhymes)
+        rhyming = [False] * n
         for i in range(n - window + 1):
-            self.mark_rhymes(rhyme_df.iloc[i:i + window, :])
-        return len(rhyme_df[rhyme_df["rhyme"]])
+            self.mark_perfect_rhymes(rhymes, rhyming, i, i+window)
+        return sum(rhyming)
 
-    def avg_rolling_rhymes(self, generation: list[pd.DataFrame], window: int):
+    def avg_rolling_rhymes(self, generation: list[list[tuple[int, ...]]], window: int):
         r = 0
-        n = sum(len(df) for df in generation)
-        for df in generation:
+        n = sum(len(rhymes) for rhymes in generation)
+        for df in tqdm(generation, disable=not self.verbose, desc="Computing rhyme pairs"):
             r += self.count_rolling_rhymes(df, window)
         return r / n
 
-    def compute(self, generations: list[list[int]] | np.ndarray, max_depth: int = 4, window: int = 4):
+    def compute(self, generations: list[list[int]] | np.ndarray, window: int = 4):
         generations = to_nested_list(generations)
-        rhymes_dfs = [self.build_rhyme_df(generation, max_depth) for generation in generations]
+        rhymes_lists = [self.build_rhyme_list(generation) for generation in tqdm(generations, disable=not self.verbose, desc="Creating rhyming parts")]
         metrics = {
-            "rolling_rhymes": self.avg_rolling_rhymes(rhymes_dfs, window=window),
+            "rolling_rhymes": self.avg_rolling_rhymes(rhymes_lists, window=window),
         }
         return metrics
