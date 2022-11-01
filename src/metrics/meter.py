@@ -40,18 +40,35 @@ class MeterMetrics:
             except KeyError:
                 continue
             stress = set(["".join(map(self.mapping_fn, s)) for _, s in l])
-            if"/" in stress:
-                stress.add("x")
+            # if"/" in stress:
+            #     stress.add("x")
             new_stress_line = []
             for sl in stress_line:
                 for s in stress:
-                    new_stress_line.append(sl+s)
+                    new_stress_line.append(sl + s)
             stress_line = new_stress_line
         return set(stress_line)
 
     def check_meter_line(self, line: list[int]):
-        stress = self.get_line_stress(line)
-        return bool(stress & self.patterns)
+        stress_line = [""]
+        for word in line:
+            try:
+                l = self.linker.get_all_pronunciations(word)
+            except KeyError:
+                continue
+            stress = set(["".join(map(self.mapping_fn, s)) for _, s in l])
+            if"/" in stress:
+                 stress.add("x")
+            new_stress_line = []
+            for sl in stress_line:
+                for s in stress:
+                    candidate = sl + s
+                    if any([candidate == p[:len(candidate)] for p in self.patterns]):
+                        new_stress_line.append(candidate)
+            stress_line = new_stress_line
+            if not stress_line:
+                return False
+        return bool(set(stress_line) & self.patterns)
 
     def count_meter_rate(self, generation: list[int]):
         newlines = [0] + [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token] + [len(generation)]
