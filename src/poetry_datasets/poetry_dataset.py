@@ -26,7 +26,8 @@ type_mappings = {
 
 def get_tokenizing_fn(tokenizer: PreTrainedTokenizer, **kwargs):
     def tokenizing_fn(data):
-        return tokenizer(data["text"], **kwargs)
+        data = tokenizer(data["text"], **kwargs)
+        return data | {"labels": data["input_ids"]}
 
     return tokenizing_fn
 
@@ -40,7 +41,7 @@ def get_pronunciation_tokenizing_fn(tokenizer: PreTrainedTokenizer, tokenizer_p:
             tokens["attention_mask"],
             max_length=max_length if max_length is not None else 8
         )
-        tokens = tokens | pronunciation
+        tokens = tokens | pronunciation | {"labels": tokens["input_ids"]}
         return tokens
 
     return tokenizing_fn
@@ -51,7 +52,6 @@ def custom_getter(chunk):
     for key, val in chunk.items():
         if key in type_mappings.keys():
             data[key] = torch.tensor(val, dtype=type_mappings[key])
-    data["labels"] = data["input_ids"]
     return data
 
 
@@ -76,7 +76,8 @@ def build_dataset(corpus: DataFrame | dict[str, DataFrame],
             "attention_mask": Sequence(Value("uint8")),
             "pronunciation": Array2D((-1, max_length), "uint8"),
             "stress": Array2D((-1, max_length), "uint8"),
-            "pronunciation_attention_mask": Array2D((-1, max_length), "uint8")
+            "pronunciation_attention_mask": Array2D((-1, max_length), "uint8"),
+            "labels": Sequence(Value("int32")),
         })
         tokenizing_fn = get_pronunciation_tokenizing_fn(tokenizer, tokenizer_p, max_length, **kwargs)
     else:
@@ -84,6 +85,7 @@ def build_dataset(corpus: DataFrame | dict[str, DataFrame],
             "text": Value("string"),
             "input_ids": Sequence(Value("int32")),
             "attention_mask": Sequence(Value("uint8")),
+            "labels": Sequence(Value("int32")),
         })
         tokenizing_fn = get_tokenizing_fn(tokenizer, **kwargs)
     if type(corpus) == dict:
