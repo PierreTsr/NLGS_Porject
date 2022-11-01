@@ -6,6 +6,7 @@
     # Enter file description
  """
 import numpy as np
+from tqdm import tqdm
 
 from src.cmu_tools import CMULinker
 from src.metrics.utils import to_nested_list
@@ -15,9 +16,10 @@ from src.pronunciation_embeddings import PronunciationTokenizer
 class MeterMetrics:
     mapping = ["", "x", "/", "/"]
 
-    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, patterns: set[str] = None):
+    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, patterns: set[str] = None, verbose:bool=True):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
+        self.verbose=verbose
         self.mapping_fn = lambda i: self.mapping[i]
         if patterns is None:
             self.patterns = {
@@ -85,7 +87,7 @@ class MeterMetrics:
     def avg_meter(self, generations: list[list[int]]):
         n = len(generations)
         s = 0
-        for generation in generations:
+        for generation in tqdm(generations, disable=not self.verbose, desc="Computing meter matches"):
             s += self.count_meter_rate(generation)
         return s / n
 

@@ -89,9 +89,9 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
         model.to(device)
 
     metrics = [
-        RhymingMetrics(linker, tokenizer_p),
-        AlliterationMetrics(linker, tokenizer_p),
-        MeterMetrics(linker, tokenizer_p),
+        RhymingMetrics(linker, tokenizer_p, verbose=False),
+        AlliterationMetrics(linker, tokenizer_p, verbose=False),
+        MeterMetrics(linker, tokenizer_p, verbose=False),
     ]
 
     sampler = BatchSampler(RandomSampler(dataset), batch_size=data_args.batch_size, drop_last=False)

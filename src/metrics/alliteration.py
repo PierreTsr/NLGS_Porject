@@ -6,6 +6,7 @@
     # Enter file description
  """
 import numpy as np
+from tqdm import tqdm
 
 from .utils import to_nested_list
 from src.cmu_tools import CMULinker
@@ -13,9 +14,10 @@ from src.pronunciation_embeddings import PronunciationTokenizer
 
 
 class AlliterationMetrics:
-    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer):
+    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, verbose: bool =True):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
+        self.verbose = verbose
 
     def get_accentuated_consonants_line(self, line: list[int]) -> list[int]:
         consonants = []
@@ -59,14 +61,14 @@ class AlliterationMetrics:
     def avg_alliteration(self, accentuated: list[list[list[int]]], threshold: int):
         a = 0
         n = 0
-        for accent in accentuated:
+        for accent in tqdm(accentuated, disable=not self.verbose, desc="Computing alliterations"):
             a += self.count_alliterations(accent, threshold)
             n += len(accent)
         return a / n
 
     def compute(self, generations: list[int] | np.ndarray, threshold: int = 2):
         generations = to_nested_list(generations)
-        accentuated_cons = [self.get_accentuated_consonants(generation) for generation in generations]
+        accentuated_cons = [self.get_accentuated_consonants(generation) for generation in tqdm(generations, disable=not self.verbose, desc="Creating phonemes sequences")]
         metrics = {
             "alliteration_per_line": self.avg_alliteration(accentuated_cons, threshold)
         }
