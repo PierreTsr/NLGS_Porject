@@ -8,6 +8,7 @@
 import json
 from pathlib import Path
 from random import shuffle
+from typing import Union
 
 import pandas as pd
 from tqdm import tqdm
@@ -61,29 +62,35 @@ def load_gutenberg(path: Path = Path("data/gutenberg_poetry"), **kwargs):
     return corpus
 
 
-def split_gutenberg(
+def load_split(path: Union[str, Path], data: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    with open(path, "r") as file:
+        split_dict = json.load(file)
+    return {
+        key: data.loc[data["gid"].isin(val)].copy() for key, val in split_dict.items()
+    }
+
+
+def split_gutenberg_to_json(
+        path: Union[str, Path],
         data: pd.DataFrame,
-        groups: str,
         ratios: tuple[int, int, int] = (0.9, .05, .05),
-) -> dict[str, pd.DataFrame]:
+) -> None:
     assert abs(sum(ratios) - 1) < 1e-5
     train = []
     test = []
-    validation = []
+    train_size = test_size = 0
     n = len(data)
-    group_ids = list(set(data[groups]))
+    group_ids = list(set(data["gid"]))
     shuffle(group_ids)
-    while len(train) < ratios[0] * n:
+    while train_size < ratios[0] * n:
         gid = group_ids.pop()
-        train += list(data.loc[data[groups] == gid].index)
-    while len(test) + len(train) < (ratios[0] + ratios[1]) * n:
+        train_size += len(data.loc[data["gid"] == gid].index)
+        train.append(gid)
+    while test_size + train_size < (ratios[0] + ratios[1]) * n:
         gid = group_ids.pop()
-        test += list(data.loc[data[groups] == gid].index)
-    while group_ids:
-        gid = group_ids.pop()
-        validation += list(data.loc[data[groups] == gid].index)
-    return {
-        "train": data.loc[train, :].copy(),
-        "test": data.loc[test, :].copy(),
-        "validation": data.loc[validation, :].copy()
-    }
+        test_size += len(data.loc[data["gid"] == gid].index)
+        test.append(gid)
+    validation = group_ids
+    split_dict = {"train": train, "test": test, "validation": validation}
+    with open(path, "w") as file:
+        json.dump(split_dict, file)

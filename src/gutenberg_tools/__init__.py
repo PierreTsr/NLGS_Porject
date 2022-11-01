@@ -5,4 +5,4 @@
     Description:
     # Enter file description
  """
-from .gutenberg_poetry_corpus import load_gutenberg, split_gutenberg
+from .gutenberg_poetry_corpus import load_gutenberg, split_gutenberg_to_json, load_split

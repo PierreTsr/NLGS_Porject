@@ -95,7 +95,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
     ]
 
     sampler = BatchSampler(RandomSampler(dataset), batch_size=data_args.batch_size, drop_last=False)
-    validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
+    validation_loader = DataLoader(dataset, sampler=sampler, num_workers=4)
 
     model.eval()
     results = defaultdict(list)
