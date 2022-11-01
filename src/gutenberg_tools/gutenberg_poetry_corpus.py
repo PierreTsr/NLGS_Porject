@@ -50,7 +50,7 @@ def split(corpus: dict[int, list[str]], n_lines: int = 32, stride: int = 16) -> 
 
 def load_gutenberg(path: Path = Path("data/gutenberg_poetry"), **kwargs):
     corpus = build_corpus(path / "gutenberg_poetry_corpus")
-    if "n_lines" in kwargs.keys() and "stride" in kwargs.keys():
+    if kwargs["n_lines"] is not None:
         corpus = split(corpus, kwargs["n_lines"], kwargs["stride"])
     else:
         corpus = {gid: "\n".join(lines) + "\n" for gid, lines in corpus.items()}
