@@ -9,7 +9,6 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 
 from tqdm import tqdm
 
@@ -19,10 +18,9 @@ from src.pronunciation_embeddings import PronunciationTokenizer
 
 
 class RhymingMetrics:
-    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, workers: Optional[int] = None):
+    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
-        self.workers = None
 
     def get_rhyming_tokens(self, generation: list[int]) -> list[int]:
         newlines = [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token]
@@ -79,20 +77,11 @@ class RhymingMetrics:
             self.mark_rhymes(rhyme_df.iloc[i:i + window, :])
         return len(rhyme_df[rhyme_df["rhyme"]])
 
-    def _count_rolling_rhymes(self, args):
-        return self.count_rolling_rhymes(*args)
-
     def avg_rolling_rhymes(self, generation: list[pd.DataFrame], window: int):
         r = 0
         n = sum(len(df) for df in generation)
-        if self.workers is not None:
-            args = [(df, window) for df in generation]
-            n = len(args)
-            with mp.Pool(self.workers) as pool:
-                r = sum(tqdm(pool.imap_unordered(self._count_rolling_rhymes, args), total=n))
-        else:
-            for df in tqdm(generation):
-                r += self.count_rolling_rhymes(df, window)
+        for df in generation:
+            r += self.count_rolling_rhymes(df, window)
         return r / n
 
     def compute(self, generations: list[list[int]] | np.ndarray, max_depth: int = 4, window: int = 4):
