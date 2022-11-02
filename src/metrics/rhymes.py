@@ -69,6 +69,8 @@ class RhymingMetrics:
     def avg_rhymes(self, generation: list[list[tuple[int, ...]]], window: int, perfect: bool = True):
         r = 0
         n = sum(len(rhymes) for rhymes in generation)
+        if n == 0:
+            return 0
         for rhymes in tqdm(generation, disable=not self.verbose, desc="Computing rhyme pairs"):
             r += self.count_rhymes(rhymes, window, perfect)
         return r / n

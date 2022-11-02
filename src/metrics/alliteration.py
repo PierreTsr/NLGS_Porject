@@ -64,10 +64,11 @@ class AlliterationMetrics:
 
     def avg_alliteration(self, accentuated: list[list[list[int]]], threshold: int):
         a = 0
-        n = 0
+        n = sum(len(accent) for accent in accentuated)
+        if n == 0:
+            return 0
         for accent in tqdm(accentuated, disable=not self.verbose, desc="Computing alliterations-{}".format(threshold)):
             a += self.count_alliterations(accent, threshold)
-            n += len(accent)
         return a / n
 
     def compute(self, generations: list[int] | np.ndarray):

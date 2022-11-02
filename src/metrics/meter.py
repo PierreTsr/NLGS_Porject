@@ -86,6 +86,8 @@ class MeterMetrics:
 
     def avg_meter(self, generations: list[list[int]]):
         n = len(generations)
+        if n == 0:
+            return 0
         s = 0
         for generation in tqdm(generations, disable=not self.verbose, desc="Computing meter matches"):
             s += self.count_meter_rate(generation)
