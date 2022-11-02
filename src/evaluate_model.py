@@ -35,6 +35,10 @@ class DataTrainingArguments:
         default=1,
         metadata={"help": "Number of generations to process at once."}
     )
+    n_samples: int = field(
+        default=1000,
+        metadata={"help": "Number of prompts to sample for generations."}
+    )
 
 
 @dataclass
@@ -78,6 +82,7 @@ class ModelArguments:
 def main(model_args: ModelArguments, data_args: DataTrainingArguments):
     dataset = load_dataset(data_args.dataset_path)["validation"]
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
     cmu = CMUDictionary()
     linker = CMULinker(tokenizer, cmu)
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
@@ -99,7 +104,12 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
 
     model.eval()
     results = defaultdict(list)
-    for batch in tqdm(validation_loader, total=len(validation_loader)):
+    ct = 0
+    n = data_args.n_samples // data_args.batch_size
+    for batch in tqdm(validation_loader, total=n):
+        if ct > n:
+            break
+        ct += 1
         with torch.no_grad():
             inputs = {}
             for key in model_args.model_inputs:
@@ -112,6 +122,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
                 temperature=model_args.temperature,
                 no_repeat_ngram_size=model_args.no_repeat_ngram_size,
                 top_p=model_args.top_p,
+                pad_token_id=tokenizer.pad_token_id
             )
             generations.to(torch.device("cpu"))
 
@@ -119,6 +130,9 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
                 res = metric.compute(generations)
                 for key, val in res.items():
                     results[key].append(val)
+
+    for txt in tokenizer.batch_decode(generations, skip_special_tokens=True):
+        print(txt, "\n")
 
     for key, val in results.items():
         print(key, ": ", np.mean(val))

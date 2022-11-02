@@ -5,16 +5,13 @@
     Description:
     # Enter file description
  """
-from typing import Optional
 
 import numpy as np
-import pandas as pd
-
 from tqdm import tqdm
 
-from .utils import to_nested_list
 from src.cmu_tools import CMULinker, get_rhyming_part
 from src.pronunciation_embeddings import PronunciationTokenizer
+from .utils import to_nested_list
 
 
 class RhymingMetrics:
@@ -49,33 +46,39 @@ class RhymingMetrics:
             rhymes.append(rhyming_part)
         return rhymes
 
-    def mark_perfect_rhymes(self, rhymes: list[tuple[int, ...]], rhyming: list[bool], begin: int, end: int):
+    def mark_rhymes(self, rhymes: list[tuple[int, ...]], rhyming: list[bool], begin: int, end: int,
+                    perfect: bool = True):
         for i in range(begin, end):
             for j in range(begin, end):
                 if i == j or (rhyming[i] and rhyming[j]):
                     continue
-                b = rhymes[i] == rhymes[j]
+                if perfect:
+                    b = bool(rhymes[i]) and bool(rhymes[j]) and (rhymes[i] == rhymes[j])
+                else:
+                    b = bool(rhymes[i]) and bool(rhymes[j]) and (rhymes[i][0] == rhymes[j][0])
                 rhyming[i] |= b
                 rhyming[j] |= b
 
-    def count_rolling_rhymes(self, rhymes: list[tuple[int, ...]], window: int) -> float:
+    def count_rhymes(self, rhymes: list[tuple[int, ...]], window: int, perfect: bool = True) -> float:
         n = len(rhymes)
         rhyming = [False] * n
         for i in range(n - window + 1):
-            self.mark_perfect_rhymes(rhymes, rhyming, i, i+window)
+            self.mark_rhymes(rhymes, rhyming, i, i + window, perfect)
         return sum(rhyming)
 
-    def avg_rolling_rhymes(self, generation: list[list[tuple[int, ...]]], window: int):
+    def avg_rhymes(self, generation: list[list[tuple[int, ...]]], window: int, perfect: bool = True):
         r = 0
         n = sum(len(rhymes) for rhymes in generation)
-        for df in tqdm(generation, disable=not self.verbose, desc="Computing rhyme pairs"):
-            r += self.count_rolling_rhymes(df, window)
+        for rhymes in tqdm(generation, disable=not self.verbose, desc="Computing rhyme pairs"):
+            r += self.count_rhymes(rhymes, window, perfect)
         return r / n
 
     def compute(self, generations: list[list[int]] | np.ndarray, window: int = 4):
         generations = to_nested_list(generations)
-        rhymes_lists = [self.build_rhyme_list(generation) for generation in tqdm(generations, disable=not self.verbose, desc="Creating rhyming parts")]
+        rhymes_lists = [self.build_rhyme_list(generation) for generation in
+                        tqdm(generations, disable=not self.verbose, desc="Creating rhyming parts")]
         metrics = {
-            "rolling_rhymes": self.avg_rolling_rhymes(rhymes_lists, window=window),
+            "perfect_rhymes": self.avg_rhymes(rhymes_lists, window=window, perfect=True),
+            "weak_rhymes": self.avg_rhymes(rhymes_lists, window=window, perfect=False),
         }
         return metrics

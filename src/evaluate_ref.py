@@ -37,9 +37,9 @@ def main(data_args: DataTrainingArguments):
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
     metrics = [
-        RhymingMetrics(linker, tokenizer_p),
-        AlliterationMetrics(linker, tokenizer_p),
-        MeterMetrics(linker, tokenizer_p),
+        RhymingMetrics(linker, tokenizer_p, verbose=True),
+        AlliterationMetrics(linker, tokenizer_p, verbose=True),
+        MeterMetrics(linker, tokenizer_p, verbose=True),
     ]
 
     results = {}
