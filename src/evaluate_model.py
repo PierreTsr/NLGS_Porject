@@ -13,7 +13,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, BatchSampler, RandomSampler
+from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM
 
@@ -99,24 +99,22 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
         MeterMetrics(linker, tokenizer_p, verbose=False),
     ]
 
-    sampler = BatchSampler(RandomSampler(dataset), batch_size=data_args.batch_size, drop_last=False)
-    validation_loader = DataLoader(dataset, sampler=sampler, num_workers=4)
+    sampler = RandomSampler(dataset)
+    validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
 
     model.eval()
     results = defaultdict(list)
     ct = 0
-    n = data_args.n_samples // data_args.batch_size
-    for batch in tqdm(validation_loader, total=n):
-        if ct > n:
+    n = data_args.n_samples
+    for sample in tqdm(validation_loader, total=n):
+        if ct == n:
             break
         ct += 1
         with torch.no_grad():
-            inputs = {}
-            for key in model_args.model_inputs:
-                inputs[key] = batch[key][0].to(device)
+            inputs, attention = sample["input_ids"], sample["attention_mask"]
+            inputs = inputs[attention].view(1, -1).to(device)
             generations = model.generate(
-                inputs=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
+                inputs,
                 max_new_tokens=model_args.max_new_tokens,
                 num_beams=model_args.num_beams,
                 temperature=model_args.temperature,
