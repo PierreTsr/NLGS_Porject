@@ -8,3 +8,4 @@
 from .rhymes import RhymingMetrics
 from .alliteration import AlliterationMetrics
 from .meter import MeterMetrics
+from .distinct import DistinctMetrics
