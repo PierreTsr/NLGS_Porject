@@ -20,7 +20,8 @@ type_mappings = {
     "attention_mask": torch.bool,
     "pronunciation": torch.uint8,
     "stress": torch.uint8,
-    "pronunciation_attention_mask": torch.bool
+    "pronunciation_attention_mask": torch.bool,
+    "labels": torch.long,
 }
 
 
