@@ -14,7 +14,7 @@ from evaluate import load
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
 
 from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
-from metrics import AlliterationMetrics,RhymingMetrics
+from metrics import AlliterationMetrics,RhymingMetrics, DistinctMetrics
 
 accuracy = load("accuracy")
 perplexity = load("perplexity")
@@ -58,8 +58,9 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     linker = CMULinker(tokenizer, cmu)
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
-    alliterations = AlliterationMetrics(linker, tokenizer_p)
-    rhymes = RhymingMetrics(linker, tokenizer_p)
+    alliterations = AlliterationMetrics(linker, tokenizer_p, verbose=False)
+    rhymes = RhymingMetrics(linker, tokenizer_p, verbose=False)
+    distinct = DistinctMetrics(tokenizer, 4, verbose=False)
 
     device = torch.device("cpu")
     if torch.cuda.is_available() and not training_args.no_cuda:
@@ -75,11 +76,13 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
         results_alli = alliterations.compute(predictions)
         results_rhymes = rhymes.compute(predictions)
+        results_distinct = distinct.compute(predictions)
         res = {
             **results_acc,
             **results_bleu,
             **results_alli,
             **results_rhymes,
+            **results_distinct,
         }
         print(res)
         return res

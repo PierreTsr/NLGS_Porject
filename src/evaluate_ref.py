@@ -13,7 +13,7 @@ from datasets import load_from_disk
 from transformers import HfArgumentParser, AutoTokenizer
 
 from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
-from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics
+from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics, DistinctMetrics
 
 
 @dataclass
@@ -40,6 +40,7 @@ def main(data_args: DataTrainingArguments):
         RhymingMetrics(linker, tokenizer_p, verbose=True),
         AlliterationMetrics(linker, tokenizer_p, verbose=True),
         MeterMetrics(linker, tokenizer_p, verbose=True),
+        DistinctMetrics(tokenizer, 4, verbose=True)
     ]
 
     results = {}
