@@ -19,7 +19,7 @@ from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM
 
 from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
-from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics
+from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics, DistinctMetrics
 
 
 @dataclass
@@ -102,6 +102,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
         RhymingMetrics(linker, tokenizer_p, verbose=False),
         AlliterationMetrics(linker, tokenizer_p, verbose=False),
         MeterMetrics(linker, tokenizer_p, verbose=False),
+        DistinctMetrics(tokenizer, 4, verbose=False)
     ]
 
     sampler = RandomSampler(dataset)
