@@ -27,7 +27,7 @@ class PronunciationGPT(GPTNeoForCausalLM):
             self.gpt.get_input_embeddings().embedding_dim,
             **kwargs
         )
-        self.y = torch.nn.Parameter(torch.tensor(1e-2), requires_grad=False)
+        self.y = torch.nn.Parameter(torch.tensor(1e-1), requires_grad=True)
         self.switch_pronunciation = True
 
     def enable_pronunciation(self):
