@@ -10,7 +10,7 @@ from typing import Optional, Tuple, Union
 import torch
 from torch import nn
 from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, TrainingArguments, TrainerState, TrainerControl, \
-    DefaultFlowCallback
+    DefaultFlowCallback, GPTNeoConfig
 
 from . import PronunciationAttention
 
@@ -19,12 +19,12 @@ class PronunciationGPT(GPTNeoForCausalLM):
 
     def __init__(self, model_path: str, embeddings_p: torch.Tensor, embeddings_s: torch.Tensor,
                  **kwargs):
-        self.gpt = AutoModelForCausalLM.from_pretrained(model_path)
-        super().__init__(self.gpt.config)
+        super().__init__(GPTNeoConfig())
+        self.transformer = AutoModelForCausalLM.from_pretrained(model_path)
         self.pronunciation = PronunciationAttention(
             embeddings_p,
             embeddings_s,
-            self.gpt.get_input_embeddings().embedding_dim,
+            self.transformer.get_input_embeddings().embedding_dim,
             **kwargs
         )
         self.y = torch.nn.Parameter(torch.tensor(1e-1), requires_grad=True)
@@ -37,17 +37,17 @@ class PronunciationGPT(GPTNeoForCausalLM):
         self.switch_pronunciation = False
 
     def resize_position_embeddings(self, new_num_position_embeddings: int):
-        self.gpt.resize_position_embeddings(new_num_position_embeddings)
+        self.transformer.resize_position_embeddings(new_num_position_embeddings)
 
     def get_position_embeddings(self) -> Union[nn.Embedding, Tuple[nn.Embedding]]:
-        return self.gpt.get_position_embeddings()
+        return self.transformer.get_position_embeddings()
 
     def freeze_gpt(self):
-        for param in self.gpt.parameters():
+        for param in self.transformer.parameters():
             param.requires_grad = False
 
     def unfreeze_gpt(self):
-        for param in self.gpt.parameters():
+        for param in self.transformer.parameters():
             param.requires_grad = True
 
     def forward(
@@ -69,7 +69,7 @@ class PronunciationGPT(GPTNeoForCausalLM):
     ):
         input_shape = input_ids.size()
         input_ids = input_ids.view(-1, input_shape[-1])
-        base_embeddings = self.gpt.get_input_embeddings()(input_ids)
+        base_embeddings = self.transformer.get_input_embeddings()(input_ids)
 
         if pronunciation is None or stress is None or pronunciation_attention_mask is None:
             raise ValueError("PronunciationGPT needs pronunciation, stress and pronunciation_attention_mask inputs.")
@@ -84,7 +84,7 @@ class PronunciationGPT(GPTNeoForCausalLM):
         else:
             inputs_embeds = base_embeddings
 
-        outputs = self.gpt(
+        outputs = self.transformer(
             past_key_values=past_key_values,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
