@@ -104,6 +104,7 @@ class PronunciationAttention(nn.Module):
         x += w
         x = x * syllable_mask.float().view(*syllable_mask.shape, 1).expand(*x.shape)
         print(w.dtype, x.dtype)
+        print([p.dtype for p in self.attention.parameters()])
 
         y, _ = self.attention(x, x, x, key_padding_mask=torch.logical_not(syllable_mask), need_weights=False)
         x += y * syllable_mask.float().view(*syllable_mask.shape, 1).expand(*x.shape)
