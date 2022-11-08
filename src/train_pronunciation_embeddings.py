@@ -25,7 +25,7 @@ def main(args):
     linker = CMULinker(tokenizer, cmu)
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
-    corpus = load_gutenberg()
+    corpus = load_gutenberg(n_lines=None)
     dataset = build_dataset(corpus, tokenizer, batched=False, num_proc=1, padding=False, truncation=False)
 
     tokenizer_p.dataset_to_files(dataset, pronunciation_dataset_path)

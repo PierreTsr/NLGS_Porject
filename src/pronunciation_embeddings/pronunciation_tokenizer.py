@@ -86,6 +86,11 @@ class PronunciationTokenizer:
             pronunciation, stress = self.convert_sentence_pt(input_ids, attention_mask)
             return {"pronunciation": pronunciation, "stress": stress}
 
+        if isinstance(input_ids, list) and isinstance(input_ids[0], int):
+            input_ids, attention_mask = torch.tensor(input_ids), torch.tensor(attention_mask)
+            pronunciation, stress = self.convert_sentence_pt(input_ids, attention_mask)
+            return {"pronunciation": pronunciation, "stress": stress}
+
         if type(input_ids) == list or input_ids.ndim == 2:
             pronunciation = []
             stress = []
@@ -98,11 +103,11 @@ class PronunciationTokenizer:
         else:
             raise NotImplementedError("Incorrect Tensor dimension for conversion")
 
-    def convert_tokens_3d(self, token_ids_batch: list[list[int]], attention_mask_batch: list[list[int]], max_length=8, **kwargs):
+    def convert_tokens_3d(self, input_ids: list[list[int]], attention_mask: list[list[int]], max_length=8, **kwargs):
         phonemes_batch = []
         stress_batch = []
         attention_batch = []
-        for token_ids, attention_mask in zip(token_ids_batch, attention_mask_batch):
+        for token_ids, attention_mask in zip(input_ids, attention_mask):
             phonemes = []
             stress = []
             attention = []
@@ -140,10 +145,10 @@ class PronunciationTokenizer:
         print("Writing pronunciation data to file:")
         with open(target_dir/"pronunciation.txt", "w") as file:
             for line in tqdm(dataset["pronunciation"], total=n):
-                line = torch.flatten(line)
-                file.write(" ".join(line.numpy().astype(str)) + "\n")
+                line = [str(x) for x in line]
+                file.write(" ".join(line) + "\n")
         print("Writing stress data to file:")
         with open(target_dir/"stress.txt", "w") as file:
             for line in tqdm(dataset["stress"], total=n):
-                line = torch.flatten(line)
-                file.write(" ".join(line.numpy().astype(str)) + "\n")
+                line = [str(x) for x in line]
+                file.write(" ".join(line) + "\n")

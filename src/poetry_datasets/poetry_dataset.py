@@ -37,11 +37,8 @@ def get_pronunciation_tokenizing_fn(tokenizer: PreTrainedTokenizer, tokenizer_p:
                                     **kwargs):
     def tokenizing_fn(data):
         tokens = tokenizer(data["text"], **kwargs)
-        pronunciation = tokenizer_p.convert_tokens_3d(
-            tokens["input_ids"],
-            tokens["attention_mask"],
-            max_length=max_length if max_length is not None else 8
-        )
+        pronunciation = tokenizer_p.convert_tokens_3d(tokens["input_ids"], tokens["attention_mask"],
+                                                      max_length=max_length if max_length is not None else 8)
         tokens = tokens | pronunciation | {"labels": tokens["input_ids"]}
         return tokens
 
