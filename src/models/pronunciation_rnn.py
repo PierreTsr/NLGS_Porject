@@ -90,7 +90,6 @@ class PronunciationAttention(nn.Module):
         p = self.embeddings_p(pronunciation.int())  # (B*L)xWxP
         s = self.embeddings_s(stress.int())  # (B*L)xWxS
         x = torch.concat([p, s], dim=-1)
-        print(p.dtype, s.dtype, x.dtype)
 
         word_mask = torch.any(syllable_mask, dim=1)
         lengths = torch.sum(syllable_mask, dim=1)[word_mask]
@@ -103,8 +102,6 @@ class PronunciationAttention(nn.Module):
         w = self.positional_embeddings(position)
         x += w
         x = x * syllable_mask.float().view(*syllable_mask.shape, 1).expand(*x.shape)
-        print(w.dtype, x.dtype)
-        print([p.dtype for p in self.attention.parameters()])
 
         y, _ = self.attention(x, x, x, key_padding_mask=torch.logical_not(syllable_mask), need_weights=False)
         x += y * syllable_mask.float().view(*syllable_mask.shape, 1).expand(*x.shape)
