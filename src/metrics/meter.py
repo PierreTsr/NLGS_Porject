@@ -9,7 +9,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.cmu_tools import CMULinker
-from src.metrics.utils import to_nested_list
+from src.utils import to_nested_list
 from src.pronunciation_embeddings import PronunciationTokenizer
 
 

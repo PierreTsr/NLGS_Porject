@@ -8,7 +8,7 @@
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
-from src.metrics.utils import to_nested_list
+from src.utils import to_nested_list
 
 
 class DistinctMetrics:

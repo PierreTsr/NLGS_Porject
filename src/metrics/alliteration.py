@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.cmu_tools import CMULinker
 from src.pronunciation_embeddings import PronunciationTokenizer
-from .utils import to_nested_list
+from src.utils import to_nested_list
 
 
 class AlliterationMetrics:
