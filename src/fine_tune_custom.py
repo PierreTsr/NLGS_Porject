@@ -99,8 +99,7 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     cmu = CMUDictionary()
     linker = CMULinker(tokenizer, cmu)
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
-    gpt = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
-    model = PronunciationGPT(gpt, embeddings_p, embeddings_s)
+    model = PronunciationGPT(model_args.model_name_or_path, embeddings_p, embeddings_s)
 
     alliterations = AlliterationMetrics(linker, tokenizer_p, verbose=False)
     rhymes = RhymingMetrics(linker, tokenizer_p, verbose=False)

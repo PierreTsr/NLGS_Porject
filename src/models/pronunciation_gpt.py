@@ -9,7 +9,7 @@ from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
-from transformers import GPTNeoForCausalLM, TrainingArguments, TrainerState, TrainerControl, \
+from transformers import AutoModelForCausalLM, GPTNeoForCausalLM, TrainingArguments, TrainerState, TrainerControl, \
     DefaultFlowCallback
 
 from . import PronunciationAttention
@@ -17,10 +17,10 @@ from . import PronunciationAttention
 
 class PronunciationGPT(GPTNeoForCausalLM):
 
-    def __init__(self, gpt: GPTNeoForCausalLM, embeddings_p: torch.Tensor, embeddings_s: torch.Tensor,
+    def __init__(self, model_path: str, embeddings_p: torch.Tensor, embeddings_s: torch.Tensor,
                  **kwargs):
-        super().__init__(gpt.config)
-        self.gpt = gpt
+        self.gpt = AutoModelForCausalLM.from_pretrained(model_path)
+        super().__init__(self.gpt.config)
         self.pronunciation = PronunciationAttention(
             embeddings_p,
             embeddings_s,
