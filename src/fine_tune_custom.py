@@ -9,9 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import numpy as np
 import torch
-from datasets import Dataset
 from evaluate import load
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
 from transformers.integrations import TensorBoardCallback
@@ -19,6 +17,8 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from models import PronunciationGPT, MixinValueCallback
 from poetry_datasets import load_dataset
+from src import CMUDictionary, CMULinker, PronunciationTokenizer
+from src.metrics import AlliterationMetrics, RhymingMetrics, DistinctMetrics
 
 accuracy = load("accuracy")
 perplexity = load("perplexity")
@@ -94,8 +94,17 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     embeddings_s = torch.load(Path(data_args.embeddings_path) / "stress_embeddings.pt")
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
+    cmu = CMUDictionary()
+    linker = CMULinker(tokenizer, cmu)
+    tokenizer_p = PronunciationTokenizer(linker, tokenizer)
     gpt = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
     model = PronunciationGPT(gpt, embeddings_p, embeddings_s)
+
+    alliterations = AlliterationMetrics(linker, tokenizer_p, verbose=False)
+    rhymes = RhymingMetrics(linker, tokenizer_p, verbose=False)
+    distinct = DistinctMetrics(tokenizer, 4, verbose=False)
 
     device = torch.device("cpu")
     if torch.cuda.is_available() and not training_args.no_cuda:
@@ -109,7 +118,16 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         references = tokenizer.batch_decode(labels)
         results_acc = accuracy.compute(predictions=predictions.flatten(), references=labels.flatten())
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
-        res = {**results_acc, **results_bleu}
+        results_alli = alliterations.compute(predictions)
+        results_rhymes = rhymes.compute(predictions)
+        results_distinct = distinct.compute(predictions)
+        res = {
+            **results_acc,
+            **results_bleu,
+            **results_alli,
+            **results_rhymes,
+            **results_distinct,
+        }
         print(res)
         return res
 
