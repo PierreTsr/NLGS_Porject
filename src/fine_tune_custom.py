@@ -135,18 +135,18 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         return logits
 
     if training_args.do_train:
-        if not model_args.use_fine_tuned:
-            model.disable_pronunciation()
-            training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
-            trainer = Seq2SeqTrainer(
-                model=model,
-                args=training_args,
-                train_dataset=dataset["train"],
-                eval_dataset=dataset["test"],
-                compute_metrics=compute_metrics,
-                preprocess_logits_for_metrics=preprocess_logits_for_metrics
-            )
-            trainer.train()
+        # if not model_args.use_fine_tuned:
+        #     model.disable_pronunciation()
+        #     training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
+        #     trainer = Seq2SeqTrainer(
+        #         model=model,
+        #         args=training_args,
+        #         train_dataset=dataset["train"],
+        #         eval_dataset=dataset["test"],
+        #         compute_metrics=compute_metrics,
+        #         preprocess_logits_for_metrics=preprocess_logits_for_metrics
+        #     )
+        #     trainer.train()
 
         model.enable_pronunciation()
         # model.freeze_gpt()
