@@ -59,21 +59,47 @@ class PronunciationRNN(nn.Module):
 
 class PronunciationAttention(nn.Module):
 
-    def __init__(self, embeddings_p: torch.Tensor, embeddings_s: torch.Tensor, dim_target: int, dim_hidden: int = 128,
-                 max_length: int = 8, num_heads: int = 4):
+    def __init__(
+            self,
+            voc_p: int,
+            dim_p: int,
+            voc_s: int,
+            dim_s: int,
+            dim_target: int,
+            dim_hidden: int = 128,
+            max_length: int = 8,
+            num_heads: int = 4
+    ):
         super(PronunciationAttention, self).__init__()
-        dim_p, dim_s = embeddings_p.size()[-1], embeddings_s.size()[-1]
+
         self.dim_src = dim_p + dim_s
         self.dim_target = dim_target
-        self.embeddings_p = nn.Embedding.from_pretrained(embeddings_p, False)
-        self.embeddings_s = nn.Embedding.from_pretrained(embeddings_s, False)
+        self.embeddings_p = nn.Embedding(voc_p, dim_p)
+        self.embeddings_s = nn.Embedding(voc_s, dim_s)
         self.positional_embeddings = nn.Embedding(max_length, self.dim_src)
+
         self.attention = nn.MultiheadAttention(self.dim_src, num_heads, batch_first=True)
         self.bn1 = nn.BatchNorm1d(self.dim_src)
         self.fc1 = nn.Linear(self.dim_src, dim_hidden)
         self.activation = nn.PReLU()
         self.fc2 = nn.Linear(dim_hidden, dim_target)
         self.bn2 = nn.BatchNorm1d(dim_target, affine=False)
+
+    @classmethod
+    def from_pretrained(cls, embeddings_p: torch.Tensor, embeddings_s: torch.Tensor, dim_target: int,
+                        dim_hidden: int = 128,
+                        max_length: int = 8, num_heads: int = 4):
+        model = cls(
+            *embeddings_p.shape,
+            *embeddings_s.shape,
+            dim_target,
+            dim_hidden,
+            max_length,
+            num_heads,
+        )
+        model.embeddings_p = nn.Embedding.from_pretrained(embeddings_p, False)
+        model.embeddings_s = nn.Embedding.from_pretrained(embeddings_s, False)
+        return model
 
     def forward(self,
                 pronunciation: torch.Tensor,
