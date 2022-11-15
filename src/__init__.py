@@ -10,3 +10,5 @@ from .gutenberg_tools import *
 from .poetry_datasets import *
 from .pronunciation_embeddings import *
 from .models import *
+from .metrics import *
+from .decoding import *

@@ -15,9 +15,11 @@ from src.utils import to_nested_list
 
 
 class RhymingMetrics:
-    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, verbose: bool = True):
+    def __init__(self, cmu_linker: CMULinker, tokenizer: PronunciationTokenizer, window:int = 4, coeffs: tuple[int, ...] = (1/2,1/2), verbose: bool = True):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
+        self.window = window
+        self.coeffs = coeffs
         self.verbose = verbose
 
     def get_rhyming_tokens(self, generation: list[int]) -> list[int]:
@@ -62,8 +64,8 @@ class RhymingMetrics:
     def count_rhymes(self, rhymes: list[tuple[int, ...]], window: int, perfect: bool = True) -> float:
         n = len(rhymes)
         rhyming = [False] * n
-        for i in range(n - window + 1):
-            self.mark_rhymes(rhymes, rhyming, i, i + window, perfect)
+        for i in range(n):
+            self.mark_rhymes(rhymes, rhyming, i, min(i + window, n), perfect)
         return sum(rhyming)
 
     def avg_rhymes(self, generation: list[list[tuple[int, ...]]], window: int, perfect: bool = True):
@@ -75,12 +77,19 @@ class RhymingMetrics:
             r += self.count_rhymes(rhymes, window, perfect)
         return r / n
 
-    def compute(self, generations: list[list[int]] | np.ndarray, window: int = 4):
+    def score_generation(self, generations: list[list[int]]):
+        rhymes_lists = [self.build_rhyme_list(generation) for generation in
+                        tqdm(generations, disable=not self.verbose, desc="Creating rhyming parts")]
+        score = self.coeffs[0] * self.avg_rhymes(rhymes_lists, window=self.window, perfect=True) + \
+            self.coeffs[1] * self.avg_rhymes(rhymes_lists, window=self.window, perfect=False)
+        return score
+
+    def compute(self, generations: list[list[int]] | np.ndarray):
         generations = to_nested_list(generations)
         rhymes_lists = [self.build_rhyme_list(generation) for generation in
                         tqdm(generations, disable=not self.verbose, desc="Creating rhyming parts")]
         metrics = {
-            "perfect_rhymes": self.avg_rhymes(rhymes_lists, window=window, perfect=True),
-            "weak_rhymes": self.avg_rhymes(rhymes_lists, window=window, perfect=False),
+            "perfect_rhymes": self.avg_rhymes(rhymes_lists, window=self.window, perfect=True),
+            "weak_rhymes": self.avg_rhymes(rhymes_lists, window=self.window, perfect=False),
         }
         return metrics

@@ -17,11 +17,13 @@ class AlliterationMetrics:
     def __init__(self, cmu_linker: CMULinker,
                  tokenizer: PronunciationTokenizer,
                  thresholds: tuple[int, ...] = (2, 3, 4),
+                 coeffs: tuple[int, ...] = (1/3,1/3,1/3),
                  verbose: bool = True):
         self.linker = cmu_linker
         self.tokenizer = tokenizer
         self.threshold = thresholds
         self.verbose = verbose
+        self.coeffs = coeffs
 
     def get_accentuated_consonants_line(self, line: list[int]) -> list[int]:
         consonants = []
@@ -58,7 +60,7 @@ class AlliterationMetrics:
                     counts[c] = 0
                 counts[c] += 1
             for val in counts.values():
-                if val > threshold:
+                if val >= threshold:
                     n += 1
         return n
 
@@ -70,6 +72,14 @@ class AlliterationMetrics:
         for accent in tqdm(accentuated, disable=not self.verbose, desc="Computing alliterations-{}".format(threshold)):
             a += self.count_alliterations(accent, threshold)
         return a / n
+
+    def score_generation(self, generations: list[list[int]]):
+        accentuated = [self.get_accentuated_consonants(generation) for generation in
+                            tqdm(generations, disable=not self.verbose, desc="Creating phonemes sequences")]
+        score = 0
+        for threshold, coeff in zip(self.threshold, self.coeffs):
+            score += coeff * self.avg_alliteration(accentuated, threshold)
+        return score
 
     def compute(self, generations: list[int] | np.ndarray):
         generations = to_nested_list(generations)
