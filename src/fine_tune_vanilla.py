@@ -11,9 +11,11 @@ from pathlib import Path
 
 import torch
 from evaluate import load
-from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
+from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, \
+    AutoTokenizer, Adafactor
+from transformers.optimization import AdafactorSchedule
 
-from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
+from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer, MeterMetrics
 from metrics import AlliterationMetrics,RhymingMetrics, DistinctMetrics
 
 accuracy = load("accuracy")
@@ -58,8 +60,12 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     linker = CMULinker(tokenizer, cmu)
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
+    optimizer = Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
+    lr_scheduler = AdafactorSchedule(optimizer)
+
     alliterations = AlliterationMetrics(linker, tokenizer_p, verbose=False)
     rhymes = RhymingMetrics(linker, tokenizer_p, verbose=False)
+    meter = MeterMetrics(linker, tokenizer_p, verbose=False)
     distinct = DistinctMetrics(tokenizer, 4, verbose=False)
 
     device = torch.device("cpu")
@@ -76,12 +82,14 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
         results_alli = alliterations.compute(predictions)
         results_rhymes = rhymes.compute(predictions)
+        results_meter = meter.compute(predictions)
         results_distinct = distinct.compute(predictions)
         res = {
             **results_acc,
             **results_bleu,
             **results_alli,
             **results_rhymes,
+            **results_meter,
             **results_distinct,
         }
         print(res)
@@ -99,7 +107,8 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             train_dataset=dataset["train"],
             eval_dataset=dataset["test"],
             compute_metrics=compute_metrics,
-            preprocess_logits_for_metrics=preprocess_logits_for_metrics
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics,
+            optimizers=(optimizer, lr_scheduler)
         )
         trainer.train()
 
