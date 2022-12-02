@@ -8,7 +8,7 @@
 import argparse
 import sys
 
-from datasets import load_from_disk, Dataset
+from datasets import load_from_disk, Dataset, DatasetDict
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -24,15 +24,7 @@ dot_id = 13
 newline_id = 198
 unk_id = 50256
 
-def main(args):
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    cmu = CMUDictionary()
-    linker = CMULinker(tokenizer, cmu)
-    tokenizer_p = PronunciationTokenizer(linker, tokenizer)
-
-    dataset = load_from_disk(args.dataset)["validation"]
-    metric = MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False)
-
+def filter_prompts(dataset, metric, tokenizer):
     prompt_pos = []
     for doc_idx, doc in tqdm(enumerate(dataset), total=len(dataset)):
         start = 0
@@ -60,10 +52,26 @@ def main(args):
         doc = dataset[doc_idx]
         for (start, end) in positions:
             line = doc["input_ids"][start:end]
-            entry = { key: val[start:end] for key, val in doc.items()}
+            entry = {key: val[start:end] for key, val in doc.items()}
             entry["text"] = tokenizer.decode(line)
             prompts.append(entry)
     prompts = Dataset.from_list(prompts)
+    return prompts
+
+def main(args):
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    cmu = CMUDictionary()
+    linker = CMULinker(tokenizer, cmu)
+    tokenizer_p = PronunciationTokenizer(linker, tokenizer)
+
+    dataset = load_from_disk(args.dataset)
+    metric = MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False)
+
+    prompts = DatasetDict({
+        "test": filter_prompts(dataset["test"], metric, tokenizer),
+        "validation": filter_prompts(dataset["validation"], metric, tokenizer)
+    })
+
     prompts.save_to_disk(args.dest)
 
 
