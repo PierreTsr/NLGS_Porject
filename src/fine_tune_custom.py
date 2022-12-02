@@ -11,13 +11,15 @@ from pathlib import Path
 
 import torch
 from evaluate import load
-from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, AutoTokenizer
+from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer, HfArgumentParser, AutoModelForCausalLM, \
+    AutoTokenizer, Adafactor
 from transformers.integrations import TensorBoardCallback
+from transformers.optimization import AdafactorSchedule
 from transformers.trainer_utils import get_last_checkpoint
 
 from models import PronunciationGPT, MixinValueCallback
 from poetry_datasets import load_dataset
-from src import CMUDictionary, CMULinker, PronunciationTokenizer
+from src import CMUDictionary, CMULinker, PronunciationTokenizer, MeterMetrics
 from src.metrics import AlliterationMetrics, RhymingMetrics, DistinctMetrics
 
 accuracy = load("accuracy")
@@ -102,8 +104,12 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
     gpt = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
     model = PronunciationGPT.from_gpt(gpt, embeddings_p, embeddings_s)
 
+    optimizer = Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
+    lr_scheduler = AdafactorSchedule(optimizer)
+
     alliterations = AlliterationMetrics(linker, tokenizer_p, verbose=False)
     rhymes = RhymingMetrics(linker, tokenizer_p, verbose=False)
+    meter = MeterMetrics(linker, tokenizer_p, verbose=False)
     distinct = DistinctMetrics(tokenizer, 4, verbose=False)
 
     device = torch.device("cpu")
@@ -120,12 +126,14 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         results_bleu = bleu.compute(predictions=predictions_txt, references=[[txt] for txt in references])
         results_alli = alliterations.compute(predictions)
         results_rhymes = rhymes.compute(predictions)
+        results_meter = meter.compute(predictions)
         results_distinct = distinct.compute(predictions)
         res = {
             **results_acc,
             **results_bleu,
             **results_alli,
             **results_rhymes,
+            **results_meter,
             **results_distinct,
         }
         print(res)
@@ -136,21 +144,9 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
         return logits
 
     if training_args.do_train:
-        # if not model_args.use_fine_tuned:
-        #     model.disable_pronunciation()
-        #     training_args.num_train_epochs = model_args.num_training_epochs_pronunciation
-        #     trainer = Seq2SeqTrainer(
-        #         model=model,
-        #         args=training_args,
-        #         train_dataset=dataset["train"],
-        #         eval_dataset=dataset["test"],
-        #         compute_metrics=compute_metrics,
-        #         preprocess_logits_for_metrics=preprocess_logits_for_metrics
-        #     )
-        #     trainer.train()
-
         model.enable_pronunciation()
-        # model.freeze_gpt()
+        model.unfreeze_gpt()
+
         training_args.num_train_epochs = model_args.num_training_epochs_full
         training_args.overwrite_output_dir = model_args.use_fine_tuned
         trainer = Seq2SeqTrainer(
@@ -160,7 +156,8 @@ def main(model_args: ModelArguments, training_args: Seq2SeqTrainingArguments, da
             eval_dataset=dataset["test"],
             compute_metrics=compute_metrics,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-            callbacks=[MixinValueCallback]
+            callbacks=[MixinValueCallback],
+            optimizers=(optimizer, lr_scheduler)
         )
         trainer.pop_callback(TensorBoardCallback)
         trainer.add_callback(TensorBoardCallback)
