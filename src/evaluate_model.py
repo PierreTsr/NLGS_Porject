@@ -14,7 +14,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, RandomSampler
+from torch.utils.data import DataLoader, SequentialSampler
 from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM
 
@@ -106,7 +106,8 @@ correct_patterns = [
 
 
 def main(model_args: ModelArguments, data_args: DataTrainingArguments):
-    dataset = load_dataset(data_args.dataset_path)["validation"]
+    dataset = Dataset.from_dict(load_dataset(data_args.dataset_path)["validation"][:data_args.n_samples])
+    dataset.set_transform(custom_getter)
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
     cmu = CMUDictionary()
@@ -127,7 +128,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
     ]
     stop = [VerseCountStoppingCriteria(4)]
 
-    sampler = RandomSampler(dataset)
+    sampler = SequentialSampler(dataset)
     validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
 
     save = False
