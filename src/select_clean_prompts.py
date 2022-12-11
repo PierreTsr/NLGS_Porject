@@ -6,7 +6,6 @@
     # Enter file description
  """
 import argparse
-import sys
 
 from datasets import load_from_disk, Dataset, DatasetDict
 from tqdm import tqdm
@@ -15,9 +14,23 @@ from transformers import AutoTokenizer
 from src import MeterMetrics, CMUDictionary, CMULinker, PronunciationTokenizer
 
 correct_patterns = [
+    # pentameter
     "x/x/x/x/x/",
     "/xx/x/x/x/",
-    "xx/x/x/x/x/"
+    "xx/x/x/x/x/",
+
+    # tetrameter
+    "/x/x/x/x",
+    "xx/xx/xx/xx/",
+    "x/x/x/x/",
+    "/x/x/x/",
+    
+    # trimeter
+    "x/x/x/",
+
+    # hexameter
+    "x/x/x/x/x/x/",
+    "/xx/xx/xx/xx/xx/xx",
 ]
 
 dot_id = 13
