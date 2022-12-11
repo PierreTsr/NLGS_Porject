@@ -25,7 +25,7 @@ class AlliterationMetrics:
         self.verbose = verbose
         self.coeffs = coeffs
 
-    def get_accentuated_consonants_line(self, line: list[int]) -> list[int]:
+    def get_accentuated_consonants_line(self, line: list[int]) -> list[tuple[int,int]]:
         consonants = []
         for word in line:
             try:
@@ -33,15 +33,15 @@ class AlliterationMetrics:
             except KeyError:
                 continue
             if phonemes[0] in self.linker.cmu_dictionary.consonants:
-                consonants.append(phonemes[0])
+                consonants.append((word,phonemes[0]))
             for idx, s in enumerate(stress):
                 if idx < 2:
                     continue
                 if s > 0 and phonemes[idx - 1] in self.linker.cmu_dictionary.consonants:
-                    consonants.append(phonemes[idx - 1])
+                    consonants.append((word,phonemes[idx - 1]))
         return consonants
 
-    def get_accentuated_consonants(self, generation: list[int]) -> list[list[int]]:
+    def get_accentuated_consonants(self, generation: list[int]) -> list[list[tuple[int,int]]]:
         newlines = [0] + [i for i, x in enumerate(generation) if x == self.tokenizer.newline_token] + [len(generation)]
         consonants = []
         for i in range(len(newlines) - 1):
@@ -51,20 +51,20 @@ class AlliterationMetrics:
             consonants.append(self.get_accentuated_consonants_line(generation[start + 1:stop]))
         return consonants
 
-    def count_alliterations(self, accentuated: list[list[int]], threshold: int) -> int:
+    def count_alliterations(self, accentuated: list[list[tuple[int,int]]], threshold: int) -> int:
         n = 0
-        for cons in accentuated:
+        for accents in accentuated:
             counts = {}
-            for c in cons:
-                if c not in counts.keys():
-                    counts[c] = 0
-                counts[c] += 1
+            for word, cons in accents:
+                if cons not in counts.keys():
+                    counts[cons] = set()
+                counts[cons].add(word)
             for val in counts.values():
-                if val >= threshold:
+                if len(val) >= threshold:
                     n += 1
         return n
 
-    def avg_alliteration(self, accentuated: list[list[list[int]]], threshold: int):
+    def avg_alliteration(self, accentuated: list[list[list[tuple[int,int]]]], threshold: int):
         a = 0
         n = sum(len(accent) for accent in accentuated)
         if n == 0:

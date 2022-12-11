@@ -36,7 +36,7 @@ class RhymingMetrics:
                     break
         return rhyming_tokens
 
-    def build_rhyme_list(self, generation: list[int]) -> list[tuple[int, ...]]:
+    def build_rhyme_list(self, generation: list[int]) -> list[tuple[int,tuple[int, ...]]]:
         rhyming_words = self.get_rhyming_tokens(generation)
         rhymes = []
         for word in rhyming_words:
@@ -45,30 +45,32 @@ class RhymingMetrics:
                 rhyming_part = get_rhyming_part(phonemes, stress)[1:]
             except KeyError:
                 rhyming_part = tuple()
-            rhymes.append(rhyming_part)
+            rhymes.append((word, rhyming_part))
         return rhymes
 
-    def mark_rhymes(self, rhymes: list[tuple[int, ...]], rhyming: list[bool], begin: int, end: int,
+    def mark_rhymes(self, rhymes: list[tuple[int, tuple[int, ...]]], rhyming: list[bool], begin: int, end: int,
                     perfect: bool = True):
         for i in range(begin, end):
-            for j in range(begin, end):
-                if i == j or (rhyming[i] and rhyming[j]):
+            for j in range(i+1, end):
+                word_a, rhymes_a = rhymes[i]
+                word_b, rhymes_b = rhymes[j]
+                if word_a == word_b or (rhyming[i] and rhyming[j]):
                     continue
                 if perfect:
-                    b = bool(rhymes[i]) and bool(rhymes[j]) and (rhymes[i] == rhymes[j])
+                    b = bool(rhymes_a) and bool(rhymes_b) and (rhymes_a == rhymes_b)
                 else:
-                    b = bool(rhymes[i]) and bool(rhymes[j]) and (rhymes[i][0] == rhymes[j][0])
+                    b = bool(rhymes_a) and bool(rhymes_b) and (rhymes_a[0] == rhymes_b[0])
                 rhyming[i] |= b
                 rhyming[j] |= b
 
-    def count_rhymes(self, rhymes: list[tuple[int, ...]], window: int, perfect: bool = True) -> float:
+    def count_rhymes(self, rhymes: list[tuple[int,tuple[int, ...]]], window: int, perfect: bool = True) -> float:
         n = len(rhymes)
         rhyming = [False] * n
         for i in range(n):
             self.mark_rhymes(rhymes, rhyming, i, min(i + window, n), perfect)
         return sum(rhyming)
 
-    def avg_rhymes(self, generation: list[list[tuple[int, ...]]], window: int, perfect: bool = True):
+    def avg_rhymes(self, generation: list[list[tuple[int,tuple[int, ...]]]], window: int, perfect: bool = True):
         r = 0
         n = sum(len(rhymes) for rhymes in generation)
         if n == 0:
