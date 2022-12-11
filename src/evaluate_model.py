@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM
 
-from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
+from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer, VerseCountStoppingCriteria
 from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics, DistinctMetrics
 
 
@@ -125,6 +125,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
         MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False),
         DistinctMetrics(tokenizer, 4, verbose=False)
     ]
+    stop = [VerseCountStoppingCriteria(4)]
 
     sampler = RandomSampler(dataset)
     validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
@@ -153,8 +154,9 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
                 num_beams=model_args.num_beams,
                 temperature=model_args.temperature,
                 no_repeat_ngram_size=model_args.no_repeat_ngram_size,
+                stopping_criteria=stop,
                 top_p=model_args.top_p,
-                pad_token_id=tokenizer.pad_token_id
+                pad_token_id=tokenizer.pad_token_id,
             )
             generations.to(torch.device("cpu"))
 
