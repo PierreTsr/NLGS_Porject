@@ -106,8 +106,7 @@ correct_patterns = [
 
 
 def main(model_args: ModelArguments, data_args: DataTrainingArguments):
-    dataset = Dataset.from_dict(load_dataset(data_args.dataset_path)["validation"][:data_args.n_samples])
-    dataset.set_transform(custom_getter)
+    dataset = load_dataset(data_args.dataset_path)["validation"]
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
     cmu = CMUDictionary()
