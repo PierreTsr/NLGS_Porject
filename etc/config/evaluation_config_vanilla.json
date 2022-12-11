@@ -1,7 +1,7 @@
 {
   "model_name_or_path": "etc/gpt-neo-125M-fine-tuned",
-  "dataset_path": "data/datasets/gutenberg_pronunciation_chunked_1_1_8",
-  "batch_size": 8,
+  "dataset_path": "data/datasets/iambic_pentameter_prompts",
+  "batch_size": 1,
   "n_samples": 1000,
   "model_inputs": ["input_ids", "attention_mask"],
   "no_cuda": false,
