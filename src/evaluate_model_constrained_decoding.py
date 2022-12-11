@@ -12,13 +12,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import wandb
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
-from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM
+from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM, LogitsProcessorList, TopKLogitsWarper, \
+    NoRepeatNGramLogitsProcessor
 
-from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer
+from src import load_dataset, CMUDictionary, CMULinker, PronunciationTokenizer, VerseCountStoppingCriteria, \
+    MeterLogitsProcessor, AStarLogitsProcessor, RhymeAuxLogitsProcessor, AlliterationAuxLogitsProcessor
 from src.metrics import RhymingMetrics, AlliterationMetrics, MeterMetrics, DistinctMetrics
 
 
@@ -106,6 +109,12 @@ correct_patterns = [
 
 
 def main(model_args: ModelArguments, data_args: DataTrainingArguments):
+    global num_beams
+    global temperature
+    global meter_mixin_coeff
+    global rhyme_mixin_coeff
+    global alliteration_mixin_coeff
+
     dataset = load_dataset(data_args.dataset_path)["validation"]
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
@@ -119,12 +128,23 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
         device = torch.device("cuda")
         model.to(device)
 
-    metrics = [
-        RhymingMetrics(linker, tokenizer_p, verbose=False),
-        AlliterationMetrics(linker, tokenizer_p, verbose=False),
-        MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False),
-        DistinctMetrics(tokenizer, 4, verbose=False)
-    ]
+    meter = MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False)
+    rhyme = RhymingMetrics(linker, tokenizer_p, verbose=False)
+    alliteration = AlliterationMetrics(linker, tokenizer_p, verbose=False)
+    distinct = DistinctMetrics(tokenizer, 4, verbose=False)
+
+    metrics = [meter, rhyme, alliteration, distinct]
+
+    stop = [VerseCountStoppingCriteria(4)]
+    proc = LogitsProcessorList([
+        TopKLogitsWarper(50),
+        NoRepeatNGramLogitsProcessor(4),
+        MeterLogitsProcessor(meter.damerauLevenshtein_all_vocab_score, meter_mixin_coeff),
+        AStarLogitsProcessor(model, [
+            RhymeAuxLogitsProcessor(rhyme.score_generation, rhyme_mixin_coeff),
+            AlliterationAuxLogitsProcessor(alliteration.score_generation, alliteration_mixin_coeff)
+        ], top_k=10, max_new_tokens=10, n_newlines=1, num_beams=5, temperature=0.3, sample=True)
+    ])
 
     sampler = RandomSampler(dataset)
     validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
@@ -150,10 +170,11 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
             generations = model.generate(
                 inputs,
                 max_new_tokens=model_args.max_new_tokens,
-                num_beams=model_args.num_beams,
-                temperature=model_args.temperature,
-                no_repeat_ngram_size=model_args.no_repeat_ngram_size,
-                top_p=model_args.top_p,
+                num_beams=num_beams,
+                temperature=temperature,
+                logits_processor=proc,
+                stopping_criteria=stop,
+                renormalize_logits=True,
                 pad_token_id=tokenizer.pad_token_id
             )
             generations.to(torch.device("cpu"))
@@ -172,13 +193,68 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
 
     for key, val in results.items():
         print(key, ": ", np.mean(val))
+    return results
+
+
+def get_run_fn(args):
+    def run(config=None):
+        global num_beams
+        global temperature
+        global meter_mixin_coeff
+        global rhyme_mixin_coeff
+        global alliteration_mixin_coeff
+
+        with wandb.init(config=config):
+            config = wandb.config
+
+            num_beams = config.nums_beams
+            temperature = config.temperature
+            meter_mixin_coeff = config.meter_mixin_coeff
+            rhyme_mixin_coeff = config.rhyme_wixin_coeff
+            alliteration_mixin_coeff = config.alliteration_mixin_coeff
+            results = main(args)
+            wandb.log(results)
+    return run
+
 
 
 if __name__ == "__main__":
+    num_beams = 5
+    temperature = 0.7
+    meter_mixin_coeff = 0.1
+    rhyme_mixin_coeff = 0.1
+    alliteration_mixin_coeff = 0.1
+
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         args = parser.parse_json_file(json_file=str(Path(sys.argv[1]).absolute()))
+        raise SystemExit(main(*args))
     else:
-        args = parser.parse_args_into_dataclasses()
-
-    raise SystemExit(main(*args))
+        args = parser.parse_args_into_dataclasses("etc/config/evaluation_config_vanilla.json")
+        run_fn = get_run_fn(args)
+        sweep_config = {
+            "method": "random",
+            "metric": {
+                "name": "perfect_rhymes",
+                "goal": "maximize"
+            },
+            "parameters": {
+                "num_beams": {
+                    "values": [1, 5, 10, 20]
+                },
+                "temperature": {
+                    "values": [.3, .5, .7, .9, 1.1, 1.3]
+                },
+                "meter_mixin_coeff": {
+                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                },
+                "rhyme_mixin_coeff": {
+                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                },
+                "alliteration_mixin_coeff": {
+                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                }
+            }
+        }
+        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
+        wandb.agent(sweep_id, run_fn, count=100)
