@@ -169,6 +169,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
             with open(model_args.save_to_file, "a") as file:
                 file.write(tokenizer.batch_decode(generations, skip_special_tokens=True)[0] + "\n\n")
 
+    print("Generation with " + model_args.model_name_or_path)
     for txt in tokenizer.batch_decode(generations, skip_special_tokens=True):
         print(txt, "\n")
 
