@@ -28,6 +28,26 @@ class DataTrainingArguments:
         }
     )
 
+correct_patterns = [
+    # pentameter
+    "x/x/x/x/x/",
+    "/xx/x/x/x/",
+    "xx/x/x/x/x/",
+
+    # tetrameter
+    "/x/x/x/x",
+    "xx/xx/xx/xx/",
+    "x/x/x/x/",
+    "/x/x/x/",
+
+    # trimeter
+    "x/x/x/",
+
+    # hexameter
+    "x/x/x/x/x/x/",
+    "/xx/xx/xx/xx/xx/xx",
+]
+
 
 def main(data_args: DataTrainingArguments):
     dataset = load_from_disk(data_args.dataset_path)
@@ -39,7 +59,7 @@ def main(data_args: DataTrainingArguments):
     metrics = [
         RhymingMetrics(linker, tokenizer_p, verbose=True),
         AlliterationMetrics(linker, tokenizer_p, verbose=True),
-        MeterMetrics(linker, tokenizer_p, verbose=True),
+        MeterMetrics(linker, tokenizer_p,patterns=correct_patterns, verbose=True),
         DistinctMetrics(tokenizer, 4, verbose=True)
     ]
 
