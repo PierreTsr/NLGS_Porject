@@ -56,8 +56,8 @@ class MeterMetrics:
         self.stress_to_idx[""].append(self.tokenizer.newline_token)
 
     def all_damerauLevenshtein(self, line: list[int]):
-        max_candidate = [""] * len(self.patterns)
-        max_val = [0] * len(self.patterns)
+        min_candidate = [""] * len(self.patterns)
+        min_val = [1e9] * len(self.patterns)
         for word in line:
             try:
                 l = self.linker.get_all_pronunciations(word)
@@ -67,23 +67,23 @@ class MeterMetrics:
             if "/" in stress or "x" in stress:
                 stress.add("x")
                 stress.add("/")
-            for i, (candidate, p) in enumerate(zip(max_candidate, self.patterns)):
-                m = 0
+            for i, (candidate, p) in enumerate(zip(min_candidate, self.patterns)):
+                m = 1e9
                 res = candidate
                 for s in stress:
-                    d = damerauLevenshtein(candidate + s, p[:len(candidate) + len(s)])
-                    if d > m:
+                    d = damerauLevenshtein(candidate + s, p[:len(candidate) + len(s)], similarity=False)
+                    if d < m:
                         m = d
                         res = candidate + s
-                max_candidate[i] = res
-                max_val[i] = m
-        max_val_complete = [damerauLevenshtein(c, p) for c, p in zip(max_candidate, self.patterns)]
-        return max_candidate, max_val, max_val_complete
+                min_candidate[i] = res
+                min_val[i] = m
+        min_val_complete = [damerauLevenshtein(c, p, similarity=False) for c, p in zip(min_candidate, self.patterns)]
+        return min_candidate, min_val, min_val_complete
 
-    def max_damerauLevenshtein(self, line: list[int]) -> tuple[str, float, float]:
-        max_candidate, max_val, max_val_complete = self.all_damerauLevenshtein(line)
-        idx = max(range(len(max_val)), key=lambda i: max_val[i])
-        return max_candidate[idx], max_val_complete[idx], max_val[idx]
+    def min_damerauLevenshtein(self, line: list[int]) -> tuple[str, float, float]:
+        min_candidate, min_val, min_val_complete = self.all_damerauLevenshtein(line)
+        idx = min(range(len(min_val)), key=lambda i: min_val[i])
+        return min_candidate[idx], min_val_complete[idx], min_val[idx]
 
     def damerauLevenshtein_all_vocab_score(self, line: list[int]):
         if self.tokenizer.newline_token in line:
@@ -146,7 +146,7 @@ class MeterMetrics:
             start, stop = newlines[i:i + 2]
             if stop - start <= 1:
                 continue
-            s += self.max_damerauLevenshtein(generation[start:stop])[1]
+            s += self.min_damerauLevenshtein(generation[start:stop])[1]
             n_lines += 1
         return s / n_lines
 
@@ -162,6 +162,6 @@ class MeterMetrics:
     def compute(self, generations: list[int] | np.ndarray):
         generations = to_nested_list(generations)
         metrics = {
-            "correct_meter_similarity": self.avg_meter(generations)
+            "correct_meter_distance": self.avg_meter(generations)
         }
         return metrics

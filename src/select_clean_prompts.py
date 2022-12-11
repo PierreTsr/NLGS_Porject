@@ -13,18 +13,20 @@ from transformers import AutoTokenizer
 
 from src import MeterMetrics, CMUDictionary, CMULinker, PronunciationTokenizer
 
-correct_patterns = [
+pentameter_patterns = [
     # pentameter
     "x/x/x/x/x/",
     "/xx/x/x/x/",
     "xx/x/x/x/x/",
+]
 
+mixed_meter_patterns = pentameter_patterns + [
     # tetrameter
     "/x/x/x/x",
     "xx/xx/xx/xx/",
     "x/x/x/x/",
     "/x/x/x/",
-    
+
     # trimeter
     "x/x/x/",
 
@@ -52,8 +54,8 @@ def filter_prompts(dataset, metric, tokenizer):
             elif token == newline_id:
                 if sentence_beginning:
                     candidate = doc["input_ids"][start:idx]
-                    _, meter_val, _ = metric.max_damerauLevenshtein(candidate)
-                    if meter_val >= args.threshold:
+                    _, meter_val, _ = metric.min_damerauLevenshtein(candidate)
+                    if meter_val <= args.threshold:
                         prompt_pos[-1].append((start, idx))
                 start = idx + 1
                 sentence_beginning = seen_dot
@@ -68,7 +70,7 @@ def filter_prompts(dataset, metric, tokenizer):
             entry = {key: val[start:end] for key, val in doc.items()}
             entry["text"] = tokenizer.decode(line)
             prompts.append(entry)
-    prompts = Dataset.from_list(prompts)
+    prompts = Dataset.from_list(prompts).shuffle(seed=42)
     return prompts
 
 def main(args):
@@ -78,7 +80,7 @@ def main(args):
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
     dataset = load_from_disk(args.dataset)
-    metric = MeterMetrics(linker, tokenizer_p, patterns=correct_patterns, verbose=False)
+    metric = MeterMetrics(linker, tokenizer_p, patterns=pentameter_patterns, verbose=False)
 
     prompts = DatasetDict({
         "test": filter_prompts(dataset["test"], metric, tokenizer),
