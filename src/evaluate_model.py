@@ -186,17 +186,18 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=Fal
         count = torch.max(torch.sum(new_lines, dim=1)).item()
         is_quatrain = 3 <= count <= 4
         quatrain.append(is_quatrain)
-        if sweep:
-            wandb.log({"quatrain": is_quatrain})
 
+        logs = {
+            "quatrain": is_quatrain
+        }
         for metric in metrics:
             res = metric.compute(generations)
+            logs.update(res)
             for key, val in res.items():
                 results[key].append(val)
-                if sweep:
-                    wandb.log({key:val})
-                    if is_quatrain:
-                        wandb.log({key+"_filtered":val})
+
+        if sweep:
+            wandb.log(logs)
 
         if filename is not None:
             with open(filename, "a") as file:
@@ -273,7 +274,7 @@ if __name__ == "__main__":
             }
         }
         wandb.login()
-        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project_all_models")
+        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project_all_models_v2")
         wandb.agent(sweep_id, run_fn, count=14)
         raise(SystemExit(0))
     else:
