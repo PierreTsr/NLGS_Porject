@@ -255,18 +255,18 @@ if __name__ == "__main__":
                 "model": {
                     "values": [
                         "etc/gpt-neo-125M-fine-tuned",
-                        # "etc/gpt-neo-1.3B-fine-tuned",
-                        # "etc/gpt-neo-2.7B-fine-tuned",
-                        # "EleutherAI/gpt-neo-125M",
-                        # "EleutherAI/gpt-neo-1.3B",
-                        # "EleutherAI/gpt-neo-2.7B",
-                        # "etc/gpt-neo-2.7B-custom",
+                        "etc/gpt-neo-1.3B-fine-tuned",
+                        "etc/gpt-neo-2.7B-fine-tuned",
+                        "EleutherAI/gpt-neo-125M",
+                        "EleutherAI/gpt-neo-1.3B",
+                        "EleutherAI/gpt-neo-2.7B",
+                        "etc/gpt-neo-2.7B-custom",
                     ]
                 },
                 "dataset": {
                     "values": [
                         "data/datasets/pentameter_prompts",
-                        # "data/datasets/mixed_meter_prompts"
+                        "data/datasets/mixed_meter_prompts"
                     ]
                 }
             }
