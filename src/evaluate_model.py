@@ -227,6 +227,10 @@ def get_run_fn(model_args: ModelArguments, data_args: DataTrainingArguments):
             config = wandb.config
             model_args.model_name_or_path = config.model
             data_args.dataset_path = config.dataset
+            if Path(data_args.dataset_path).name == "pentameter_prompts":
+                model_args.meter = "iambic_pentameter"
+            elif Path(data_args.dataset_path).name == "mixed_meter_prompts":
+                model_args.meter = "mixed_meter"
             results = main(model_args, data_args)
             wandb.log(results)
 
