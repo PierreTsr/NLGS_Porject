@@ -112,7 +112,7 @@ mixed_meter_patterns = pentameter_patterns + [
 ]
 
 
-def main(model_args: ModelArguments, data_args: DataTrainingArguments):
+def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=False):
     dataset = load_dataset(data_args.dataset_path)["validation"]
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
@@ -181,19 +181,27 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
             )
             generations.to(torch.device("cpu"))
 
+        mask = generations == newline_token_id
+        new_lines = (mask[:, 1:] ^ mask.roll(1, dims=1)[:, 1:]) & mask[:, 1:]
+        count = torch.max(torch.sum(new_lines, dim=1)).item()
+        is_quatrain = 3 <= count <= 4
+        quatrain.append(is_quatrain)
+        if sweep:
+            wandb.log({"quatrain": is_quatrain})
+
         for metric in metrics:
             res = metric.compute(generations)
             for key, val in res.items():
                 results[key].append(val)
+                if sweep:
+                    wandb.log({key:val})
+                    if is_quatrain:
+                        wandb.log({key+"_filtered":val})
 
         if filename is not None:
             with open(filename, "a") as file:
                 file.write(tokenizer.batch_decode(generations, skip_special_tokens=True)[0] + "\n\n<SEP>\n\n")
 
-        mask = generations == newline_token_id
-        new_lines = (mask[:, 1:] ^ mask.roll(1, dims=1)[:, 1:]) & mask[:, 1:]
-        count = torch.max(torch.sum(new_lines, dim=1)).item()
-        quatrain.append(count >= 3)
 
     quatrain = np.array(quatrain, dtype=bool)
     print("Generation with " + model_args.model_name_or_path)
@@ -215,11 +223,6 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
             for key, val in results.items():
                 file.write("   {}: {}\n".format(key, np.mean(np.array(val)[quatrain])))
 
-    results = {
-        "quatrain": np.mean(quatrain),
-        **{key: np.mean(np.array(val)[quatrain]) for key, val in results.items()}
-    }
-    return results
 
 def get_run_fn(model_args: ModelArguments, data_args: DataTrainingArguments):
     def run(config=None):
@@ -231,9 +234,7 @@ def get_run_fn(model_args: ModelArguments, data_args: DataTrainingArguments):
                 model_args.meter = "iambic_pentameter"
             elif Path(data_args.dataset_path).name == "mixed_meter_prompts":
                 model_args.meter = "mixed_meter"
-            results = main(model_args, data_args)
-            wandb.log(results)
-
+            main(model_args, data_args, True)
     return run
 
 
@@ -242,7 +243,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         model_args, data_args = parser.parse_json_file(json_file=str(Path(sys.argv[1]).absolute()))
         raise SystemExit(main(model_args, data_args))
-    else:
+    elif len(sys.argv) == 1:
         model_args, data_args = parser.parse_json_file("etc/config/evaluation_config_vanilla.json")
         run_fn = get_run_fn(model_args, data_args)
         sweep_config = {
@@ -275,3 +276,5 @@ if __name__ == "__main__":
         sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
         wandb.agent(sweep_id, run_fn, count=14)
         raise(SystemExit(0))
+    else:
+        parser.parse_args()
