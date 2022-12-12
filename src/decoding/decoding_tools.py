@@ -107,5 +107,4 @@ class AStarLogitsProcessor(LogitsProcessor):
         voc_idx = topk.flatten()
         for aux in self.aux_processors:
             scores = aux(samples, voc_idx, batch_idx, scores)
-        print("Step")
         return scores

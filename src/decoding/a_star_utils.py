@@ -7,6 +7,7 @@
  """
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 
 def generate_samples(model, input_ids: torch.LongTensor, eos_token_id: int, max_new_tokens: int, **kwargs):
@@ -40,7 +41,7 @@ def generate_samples(model, input_ids: torch.LongTensor, eos_token_id: int, max_
     active = (generations[..., -1] != eos_token_id).flatten()
     model.eval()
     with torch.no_grad():
-        for _ in range(max_new_tokens):
+        for _ in tqdm(range(max_new_tokens), desc="A-star sample generator", leave=False):
             logits = model(input_ids=generations.view(batch_size * num_beams, -1), use_cache=True).logits
             logits = logits[:, -1, :] / temperature
 
