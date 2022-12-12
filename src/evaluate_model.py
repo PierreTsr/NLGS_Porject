@@ -241,6 +241,7 @@ if __name__ == "__main__":
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         model_args, data_args = parser.parse_json_file(json_file=str(Path(sys.argv[1]).absolute()))
+        raise SystemExit(main(model_args, data_args))
     else:
         model_args, data_args = parser.parse_json_file("etc/config/evaluation_config_vanilla.json")
         run_fn = get_run_fn(model_args, data_args)
@@ -273,5 +274,4 @@ if __name__ == "__main__":
         wandb.login()
         sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
         wandb.agent(sweep_id, run_fn, count=14)
-
-    raise SystemExit(main(model_args, data_args))
+        raise(SystemExit(0))
