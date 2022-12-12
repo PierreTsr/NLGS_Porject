@@ -299,9 +299,9 @@ if __name__ == "__main__":
             "parameters": {
                 "model": {
                     "values": [
-                        "etc/gpt-neo-125M-fine-tuned",
-                        # "EleutherAI/gpt-neo-2.7B",
-                        # "etc/gpt-neo-2.7B-custom",
+                        "etc/gpt-neo-2.7B-fine-tuned",
+                        "EleutherAI/gpt-neo-2.7B",
+                        "etc/gpt-neo-2.7B-custom",
                     ]
                 },
                 "dataset": {
