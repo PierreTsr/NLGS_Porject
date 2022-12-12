@@ -272,6 +272,6 @@ if __name__ == "__main__":
         }
         wandb.login()
         sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
-        wandb.agent(sweep_id, run_fn)
+        wandb.agent(sweep_id, run_fn, count=14)
 
     raise SystemExit(main(model_args, data_args))
