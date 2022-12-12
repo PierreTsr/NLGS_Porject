@@ -80,7 +80,13 @@ def main(args):
     tokenizer_p = PronunciationTokenizer(linker, tokenizer)
 
     dataset = load_from_disk(args.dataset)
-    metric = MeterMetrics(linker, tokenizer_p, patterns=pentameter_patterns, verbose=False)
+    if args.meter == "iambic_pentameter":
+        patterns = pentameter_patterns
+    elif args.meter == "mixed_meter":
+        patterns = mixed_meter_patterns
+    else:
+        raise(ValueError("Incorrect --meter value."))
+    metric = MeterMetrics(linker, tokenizer_p, patterns=patterns, verbose=False)
 
     prompts = DatasetDict({
         "test": filter_prompts(dataset["test"], metric, tokenizer),
@@ -94,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", type=str, help="Path to the dataset to use.")
     parser.add_argument("-t", "--threshold", type=float, default="Threshold value for the meter metric.")
+    parser.add_argument("-m", "--meter", type=str, choices=("mixed_meter", "iambic_pentameter"), help="Filter to apply on the meter of the selected prompts.")
     parser.add_argument("--dest", type=str, help="Path of the new dataset to save.")
     args = parser.parse_args()
 
