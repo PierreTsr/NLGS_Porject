@@ -273,7 +273,7 @@ if __name__ == "__main__":
             }
         }
         wandb.login()
-        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
+        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project_all_models")
         wandb.agent(sweep_id, run_fn, count=14)
         raise(SystemExit(0))
     else:
