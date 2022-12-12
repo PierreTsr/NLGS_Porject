@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import wandb
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, SequentialSampler
@@ -214,12 +215,59 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments):
             for key, val in results.items():
                 file.write("   {}: {}\n".format(key, np.mean(np.array(val)[quatrain])))
 
+    results = {
+        "quatrain": np.mean(quatrain),
+        **{key: np.mean(np.array(val)[quatrain]) for key, val in results.items()}
+    }
+    return results
+
+def get_run_fn(model_args: ModelArguments, data_args: DataTrainingArguments):
+    def run(config=None):
+        with wandb.init(config=config):
+            config = wandb.config
+            model_args.model_name_or_path = config.model
+            data_args.dataset_path = config.dataset
+            results = main(model_args, data_args)
+            wandb.log(results)
+
+    return run
+
 
 if __name__ == "__main__":
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        args = parser.parse_json_file(json_file=str(Path(sys.argv[1]).absolute()))
+        model_args, data_args = parser.parse_json_file(json_file=str(Path(sys.argv[1]).absolute()))
     else:
-        args = parser.parse_args_into_dataclasses()
+        model_args, data_args = parser.parse_json_file("etc/config/evaluation_config_vanilla.json")
+        run_fn = get_run_fn(model_args, data_args)
+        sweep_config = {
+            "method": "grid",
+            "metric": {
+                "name": "perfect_rhymes",
+                "goal": "maximize"
+            },
+            "parameters": {
+                "model": {
+                    "values": [
+                        "etc/gpt-neo-125M-fine-tuned",
+                        # "etc/gpt-neo-1.3B-fine-tuned",
+                        # "etc/gpt-neo-2.7B-fine-tuned",
+                        # "EleutherAI/gpt-neo-125M",
+                        # "EleutherAI/gpt-neo-1.3B",
+                        # "EleutherAI/gpt-neo-2.7B",
+                        # "etc/gpt-neo-2.7B-custom",
+                    ]
+                },
+                "dataset": {
+                    "values": [
+                        "data/datasets/pentameter_prompts",
+                        # "data/datasets/mixed_meter_prompts"
+                    ]
+                }
+            }
+        }
+        wandb.login()
+        sweep_id = wandb.sweep(sweep_config, project="NLGS_Project")
+        wandb.agent(sweep_id, run_fn)
 
-    raise SystemExit(main(*args))
+    raise SystemExit(main(model_args, data_args))

@@ -212,3 +212,5 @@ data/*
 
 # Logging
 etc/logging
+
+wandb/
