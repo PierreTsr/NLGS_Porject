@@ -103,8 +103,8 @@ class AStarLogitsProcessor(LogitsProcessor):
         samples = samples.cpu()
 
         samples = samples.view(batch_size * self.k, num_beams, -1)
-        batch_idx = torch.arange(0, batch_size).view(batch_size, 1).repeat(1, self.k).flatten()
-        voc_idx = topk.flatten()
+        batch_idx = torch.arange(0, batch_size, device="cpu").view(batch_size, 1).repeat(1, self.k).flatten()
+        voc_idx = topk.flatten().cpu()
         for aux in self.aux_processors:
             scores = aux(samples, voc_idx, batch_idx, scores)
         return scores
