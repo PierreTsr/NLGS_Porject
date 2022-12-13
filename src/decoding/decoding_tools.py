@@ -57,12 +57,12 @@ class RhymeAuxLogitsProcessor(AuxLogitsProcessor):
 
     def __call__(self, samples: torch.LongTensor, voc_idx: torch.LongTensor, batch_idx: torch.LongTensor,
                  scores: torch.FloatTensor, **kwargs) -> torch.FloatTensor:
-        rhyme_scores = torch.zeros_like(scores)
+        rhyme_scores = torch.zeros_like(scores, device="cpu")
         samples = [to_nested_list(sample) for sample in samples]
         for gen, word, batch in zip(samples, voc_idx, batch_idx):
             rhyme_scores[batch, word] = self.rhyme_fn(gen)
         rhyme_scores[batch_idx, voc_idx] -= torch.mean(rhyme_scores[batch_idx, voc_idx])
-        return scores + self.mixin * rhyme_scores
+        return scores + self.mixin * rhyme_scores.to(scores.device)
 
 
 class AlliterationAuxLogitsProcessor(AuxLogitsProcessor):
@@ -73,12 +73,12 @@ class AlliterationAuxLogitsProcessor(AuxLogitsProcessor):
 
     def __call__(self, samples: torch.LongTensor, voc_idx: torch.LongTensor, batch_idx: torch.LongTensor,
                  scores: torch.FloatTensor, **kwargs) -> torch.FloatTensor:
-        alliteration_scores = torch.zeros_like(scores)
+        alliteration_scores = torch.zeros_like(scores, device="cpu")
         samples = [to_nested_list(sample) for sample in samples]
         for gen, word, batch in zip(samples, voc_idx, batch_idx):
             alliteration_scores[batch, word] = self.alliteration_fn(gen)
         alliteration_scores[batch_idx, voc_idx] -= torch.mean(alliteration_scores[batch_idx, voc_idx])
-        return scores + self.mixin * alliteration_scores
+        return scores + self.mixin * alliteration_scores.to(scores.device)
 
 
 class AStarLogitsProcessor(LogitsProcessor):
@@ -95,12 +95,12 @@ class AStarLogitsProcessor(LogitsProcessor):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
         batch_size, voc_size = scores.shape
         num_beams = self.kwargs["num_beams"] if "num_beams" in self.kwargs.keys() else 1
-
         topk = torch.topk(scores, self.k, dim=-1).indices
         samples = torch.cat((input_ids.view(batch_size, 1, -1).repeat(1, self.k, 1), topk.view(batch_size, self.k, 1)), dim=-1).long()
         samples = samples.view(batch_size * self.k, -1)
         samples = generate_samples(self.model, samples, self.eos_token_id, self.max_new_tokens,
                                    newline_token_id=self.newline_token_id, **self.kwargs)
+        samples = samples.cpu()
 
         samples = samples.view(batch_size * self.k, num_beams, -1)
         batch_idx = torch.arange(0, batch_size).view(batch_size, 1).repeat(1, self.k).flatten()
