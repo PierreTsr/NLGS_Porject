@@ -42,7 +42,7 @@ def generate_samples(model, input_ids: torch.LongTensor, eos_token_id: int, max_
     model.eval()
     with torch.no_grad():
         for _ in tqdm(range(max_new_tokens), desc="A-star sample generator", leave=False):
-            logits = model(input_ids=generations.view(batch_size * num_beams, -1), use_cache=False).logits
+            logits = model(input_ids=generations.view(batch_size * num_beams, -1), use_cache=True).logits
             logits = logits[:, -1, :] / temperature
 
             if sample:

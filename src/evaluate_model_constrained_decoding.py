@@ -165,9 +165,9 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=Fal
                 AlliterationAuxLogitsProcessor(alliteration.score_generation, model_args.alliteration_mixin_coeff)
             ],
             sample=True,
-            top_k=5,
+            top_k=10,
             num_beams=5,
-            max_new_tokens=5,
+            max_new_tokens=10,
             n_newlines=1,
             temperature=0.7,
         )
@@ -216,7 +216,8 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=Fal
                 logits_processor=proc,
                 stopping_criteria=stop,
                 renormalize_logits=True,
-                pad_token_id=tokenizer.pad_token_id
+                pad_token_id=tokenizer.pad_token_id,
+                use_cache=False
             )
             generations.to(torch.device("cpu"))
 
