@@ -165,11 +165,11 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=Fal
                 AlliterationAuxLogitsProcessor(alliteration.score_generation, model_args.alliteration_mixin_coeff)
             ],
             sample=True,
-            top_k=10,
+            top_k=5,
             num_beams=5,
-            max_new_tokens=10,
+            max_new_tokens=5,
             n_newlines=1,
-            temperature=0.5,
+            temperature=0.7,
         )
     ])
 
@@ -310,19 +310,19 @@ if __name__ == "__main__":
                     ]
                 },
                 "meter_mixin_coeff": {
-                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                    "values": [1e-2, 1e-1, 1]
                 },
                 "rhyme_mixin_coeff": {
-                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                    "values": [1e-2, 1e-1, 1]
                 },
                 "alliteration_mixin_coeff": {
-                    "values": [1e-3, 1e-2, 1e-1, 1, 10]
+                    "values": [1e-2, 1e-1, 1]
                 },
                 "num_beams": {
-                    "values": [1, 5, 10, 20]
+                    "values": [1, 5, 10]
                 },
                 "temperature": {
-                    "values": [.3, .5, .7, .9, 1.1, 1.3]
+                    "values": [.5, .7, .9, 1.3]
                 }
             }
         }
