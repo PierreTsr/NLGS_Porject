@@ -61,9 +61,9 @@ python src/fine_tune_custom.py etc/config/fine_tune_custom.json
 ```
 
 Depending on the chosen base-model the expected required VRAM is roughly:
-- **Gpt-Neo-125M** 1Gb
-- **Gpt-Neo-1.3B** 13Gb
-- **Gpt-Neo-2.7B** 22Gb
+- **Gpt-Neo-125M** 3Gb
+- **Gpt-Neo-1.3B** 15Gb
+- **Gpt-Neo-2.7B** 27Gb
 
 The results of each experiment are stored in the directory specified in the provided configuration. To load a trained model use the Transformers' API and use the path to the desired checkpoint.
 
