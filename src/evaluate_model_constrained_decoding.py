@@ -15,7 +15,7 @@ from typing import Optional
 import numpy as np
 import torch
 import wandb
-from torch.utils.data import DataLoader, RandomSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer, AutoModelForCausalLM, LogitsProcessorList, TopKLogitsWarper, \
     NoRepeatNGramLogitsProcessor
@@ -173,7 +173,7 @@ def main(model_args: ModelArguments, data_args: DataTrainingArguments, sweep=Fal
         )
     ])
 
-    sampler = RandomSampler(dataset)
+    sampler = SequentialSampler(dataset)
     validation_loader = DataLoader(dataset, sampler=sampler, num_workers=0)
 
     filename = None
