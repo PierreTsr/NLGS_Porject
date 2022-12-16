@@ -300,9 +300,7 @@ if __name__ == "__main__":
             "parameters": {
                 "model": {
                     "values": [
-                        "etc/gpt-neo-2.7B-fine-tuned",
-                        "EleutherAI/gpt-neo-2.7B",
-                        "etc/gpt-neo-2.7B-custom",
+                        "etc/gpt-neo-1.3B-fine-tuned",
                     ]
                 },
                 "dataset": {
@@ -320,7 +318,7 @@ if __name__ == "__main__":
                     "values": [1e-2, 1e-1, 1]
                 },
                 "num_beams": {
-                    "values": [1, 5, 10]
+                    "values": [1]
                 },
                 "temperature": {
                     "values": [.5, .7, .9, 1.3]
@@ -329,7 +327,7 @@ if __name__ == "__main__":
         }
         wandb.login()
         sweep_id = wandb.sweep(sweep_config, project="NLGS_Project_decoding")
-        wandb.agent(sweep_id, run_fn, count=200)
+        wandb.agent(sweep_id, run_fn, count=1)
         raise (SystemExit(0))
     else:
         parser.parse_args()
