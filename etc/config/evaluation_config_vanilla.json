@@ -1,6 +1,6 @@
 {
-  "model_name_or_path": "etc/gpt-neo-125M-fine-tuned",
-  "dataset_path": "data/datasets/iambic_pentameter_prompts",
+  "model_name_or_path": "etc/gpt-neo-2.7B-fine-tuned",
+  "dataset_path": "data/datasets/pentameter_prompts",
   "batch_size": 1,
   "n_samples": 20,
   "model_inputs": ["input_ids", "attention_mask"],
@@ -10,6 +10,6 @@
   "no_repeat_ngram_size": 4,
   "top_p": 1.0,
   "max_new_tokens": 60,
-  "save_to_file": "etc/generations/",
+  "save_to_file": "etc/generations",
   "meter": "iambic_pentameter"
 }
